@@ -1,0 +1,52 @@
+{
+    "shapes": [
+        {
+            "type": "Sphere",
+            "shape": {
+                "center": {
+                    "x": 10.0,
+                    "y": 0.0,
+                    "z": -20.0
+                },
+                "radius": 5.0
+            }
+        },
+        {
+            "type": "Sphere",
+            "shape": {
+                "center": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": -20.0
+                },
+                "radius": 5.0
+            }
+        },
+        {
+            "type": "Sphere",
+            "shape": {
+                "center": {
+                    "x": -10.0,
+                    "y": 0.0,
+                    "z": -20.0
+                },
+                "radius": 5.0
+            }
+        },
+        {
+            "type": "Plane",
+            "shape": {
+                "normal": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 0.0
+                },
+                "p0": {
+                    "x": 0.0,
+                    "y": -5.0,
+                    "z": 0.0
+                }
+            }
+        }
+    ]
+}
