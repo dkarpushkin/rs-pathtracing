@@ -1,4 +1,10 @@
-use std::{sync::{Arc, Condvar, Mutex, RwLock, mpsc::{Receiver, Sender}}, thread::{spawn, JoinHandle}};
+use std::{
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc, Condvar, Mutex, RwLock,
+    },
+    thread::{spawn, JoinHandle},
+};
 
 use itertools::Itertools;
 
@@ -14,28 +20,29 @@ pub mod thread_pool_new;
 pub mod threaded;
 
 pub fn ray_color(world: &World, ray: &Ray, depth: u32) -> Vector3d {
-    match world.closest_hit(&ray) {
-        Some(hit) => {
+    match world.closest_hit(&ray, 0.001, f64::INFINITY) {
+        Some(ray_hit) => {
             if depth == 0 {
                 Vector3d::new(0.0, 0.0, 0.0)
             } else {
-                let random_vector = Vector3d::get_random_unit();
-                // let target = &hit.point + &hit.normal + random_vector;
-                let ray_color = ray_color(
-                    world,
-                    &Ray {
-                        origin: hit.point.clone(),
-                        // direction: &target - &hit.point,
-                        direction: &hit.normal + &random_vector,
-                    },
-                    depth - 1,
-                );
-                0.5 * ray_color
+                // let ray_color = ray_color(
+                //     world,
+                //     &Ray {
+                //         origin: ray_hit.point.clone(),
+                //         // direction: Vector3d::random_in_hemisphere(&ray_hit.normal),
+                //         direction: &ray_hit.normal + Vector3d::random_unit(),
+                //     },
+                //     depth - 1,
+                // );
+                // 0.5 * ray_color
+
+                let scatter = ray_hit.material.scatter(ray, &ray_hit);
+                scatter.attenuation.product(&ray_color(world, &scatter.ray, depth - 1))
             }
-            // 0.5 * (hit.normal.normalize() + Vector3d::new(1.0, 1.0, 1.0))
+            // 0.5 * (ray_hit.normal.normalize() + Vector3d::new(1.0, 1.0, 1.0))
         }
         None => {
-            let unit_vector = ray.direction.normalize();
+            let unit_vector = ray.direction.clone();
             let t = 0.5 * (unit_vector.y + 1.0);
             (1.0 - t) * Vector3d::new(1.0, 1.0, 1.0) + t * Vector3d::new(0.5, 0.7, 1.0)
         }
@@ -60,7 +67,7 @@ pub fn render_to(world: &World, camera: &Camera, buffer: &mut [u8]) {
 }
 
 pub trait Renderer {
-    fn start_rendering(&mut self, camera: Arc<RwLock<Camera>>);
+    fn start_rendering(&mut self, camera: Arc<RwLock<Camera>>, samples_number: u32);
     fn render_step(&mut self, buffer: &mut Vec<Vector3d>) -> bool;
     fn stop_rendering(&mut self);
 }
@@ -119,11 +126,7 @@ fn new_worker_thread(
                 Err(_) => {
                     println!("Thread {} is stopping", thread_id);
                     break;
-                } // Err(mpsc::TryRecvError::Empty) => continue,
-                  // Err(mpsc::TryRecvError::Disconnected) => {
-                  //     println!("Thread {} is stopping", thread_id);
-                  //     break;
-                  // }
+                }
             };
             // let end = time::Instant::now();
             // wait_time += end - start;
@@ -131,15 +134,7 @@ fn new_worker_thread(
             match input {
                 Some(v) => {
                     // let start = time::Instant::now();
-                    let result = v
-                        .iter()
-                        .map(|(index, rays)| {
-                            let samples_colors =
-                                rays.iter().map(|ray| ray_color(world, ray, depth));
-                            let ln = samples_colors.len() as f64;
-                            (*index, samples_colors.sum::<Vector3d>() / ln)
-                        })
-                        .collect_vec();
+                    let result = trace_pixel_samples_group(v, world, depth);
                     // let end = time::Instant::now();
                     // process_time += end - start;
 
@@ -168,4 +163,21 @@ fn new_worker_thread(
             }
         }
     })
+}
+
+pub fn trace_pixel_samples_group(input: InputDataVec, world: &World, depth: u32) -> OutputDataVec {
+    input
+        .iter()
+        .map(|(index, rays)| {
+            let samples_colors = rays.iter().map(|ray| ray_color(world, ray, depth));
+            let ln = samples_colors.len() as f64;
+            (*index, samples_colors.sum::<Vector3d>() / ln)
+        })
+        .collect_vec()
+}
+
+pub fn trace_pixel_samples(input: InputData, world: &World, depth: u32) -> OutputData {
+    let samples_colors = input.1.iter().map(|ray| ray_color(world, ray, depth));
+    let ln = samples_colors.len() as f64;
+    (input.0, samples_colors.sum::<Vector3d>() / ln)
 }

@@ -5,6 +5,8 @@ use rand::{prelude::ThreadRng, Rng};
 
 use crate::{algebra::Vector3d, world::Ray};
 
+pub mod uniform_camera;
+
 #[derive(Debug, Clone)]
 pub struct ImageParams {
     pub width: u32,
@@ -215,7 +217,7 @@ impl MultisamplerRayCaster {
     pub fn new(camera: &Camera, samples_number: u32) -> Self {
         let center = &camera.position + camera.focal_length * &camera.direction;
         Self {
-            left_top: center
+            left_top: &camera.position + camera.focal_length * &camera.direction
                 - &camera.rigth * (camera.viewport_width / 2.0)
                 + &camera.up * (camera.viewport_height / 2.0),
             coords_iter: (0..camera.image.height).cartesian_product(0..camera.image.width),
@@ -227,26 +229,43 @@ impl MultisamplerRayCaster {
             camera_up: camera.up.clone(),
         }
     }
+
+    pub fn get_ray(&self, x: f64, y: f64) -> Ray {
+        let dir = &self.left_top + (self.pixel_resolution * x) * &self.camera_right
+            - (self.pixel_resolution * y) * &self.camera_up;
+        Ray::new(self.camera_position.clone(), dir - &self.camera_position)
+    }
+
+    pub fn get_pixel_sample(&mut self, x: u32, y: u32) -> Vec<Ray> {
+        (0..self.samples_number)
+            .map(|_| {
+                let u: f64 = self.rng.gen();
+                let v: f64 = self.rng.gen();
+
+                self.get_ray(x as f64 + u, y as f64 + v)
+            })
+            .collect()
+    }
 }
 
 impl Iterator for MultisamplerRayCaster {
     type Item = (u32, u32, Vec<Ray>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (v, u) = self.coords_iter.next()?;
+        let (y, x) = self.coords_iter.next()?;
         let samples = (0..self.samples_number)
             .map(|_| {
-                let x: f64 = self.rng.gen();
-                let y: f64 = self.rng.gen();
+                let u: f64 = self.rng.gen();
+                let v: f64 = self.rng.gen();
 
                 let dir = &self.left_top
-                    + (self.pixel_resolution * (u as f64 + x)) * &self.camera_right
-                    - (self.pixel_resolution * (v as f64 + y)) * &self.camera_up;
-                Ray::new(self.camera_position.clone(), dir)
+                    + (self.pixel_resolution * (x as f64 + u)) * &self.camera_right
+                    - (self.pixel_resolution * (y as f64 + v)) * &self.camera_up;
+                Ray::new(self.camera_position.clone(), dir - &self.camera_position)
             })
             .collect();
 
-        Some((u, v, samples))
+        Some((x, y, samples))
     }
 }
 

@@ -4,33 +4,65 @@
             "type": "Sphere",
             "shape": {
                 "center": {
-                    "x": 10.0,
-                    "y": 0.0,
-                    "z": -20.0
-                },
-                "radius": 5.0
-            }
-        },
-        {
-            "type": "Sphere",
-            "shape": {
-                "center": {
                     "x": 0.0,
                     "y": 0.0,
-                    "z": -20.0
+                    "z": -10.0
                 },
-                "radius": 5.0
+                "radius": 5.0,
+                "material": {
+                    "type": "Lambertian",
+                    "material": {
+                        "albedo": {
+                            "x": 0.5,
+                            "y": 0.5,
+                            "z": 0.5
+                        }
+                    }
+                }
             }
         },
         {
             "type": "Sphere",
             "shape": {
                 "center": {
-                    "x": -10.0,
+                    "x": 11.0,
                     "y": 0.0,
-                    "z": -20.0
+                    "z": -10.0
                 },
-                "radius": 5.0
+                "radius": 5.0,
+                "material": {
+                    "type": "Lambertian",
+                    "material": {
+                        "albedo": {
+                            "x": 0.5,
+                            "y": 0.5,
+                            "z": 0.5
+                        },
+                        "fuzz": 0.0
+                    }
+                }
+            }
+        },
+        {
+            "type": "Sphere",
+            "shape": {
+                "center": {
+                    "x": -11.0,
+                    "y": 0.0,
+                    "z": -10.0
+                },
+                "radius": 5.0,
+                "material": {
+                    "type": "Lambertian",
+                    "material": {
+                        "albedo": {
+                            "x": 0.5,
+                            "y": 0.5,
+                            "z": 0.5
+                        },
+                        "fuzz": 0.0
+                    }
+                }
             }
         },
         {
@@ -45,6 +77,16 @@
                     "x": 0.0,
                     "y": -5.0,
                     "z": 0.0
+                },
+                "material": {
+                    "type": "Lambertian",
+                    "material": {
+                        "albedo": {
+                            "x": 0.5,
+                            "y": 0.5,
+                            "z": 0.5
+                        }
+                    }
                 }
             }
         }

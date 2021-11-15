@@ -21,7 +21,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/main.exe",
-            "args": ["${workspaceFolder}/world.json"],
+            "args": ["${workspaceFolder}/world_small.json"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

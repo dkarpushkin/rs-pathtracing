@@ -123,7 +123,7 @@ impl Renderer for ThreadPoolRenderer {
         self.is_started = false;
     }
 
-    fn start_rendering(&mut self, camera: Arc<RwLock<Camera>>) {
+    fn start_rendering(&mut self, camera: Arc<RwLock<Camera>>, samples_number: u32) {
         let width = camera.read().unwrap().image().width;
         let height = camera.read().unwrap().image().height;
 
@@ -131,7 +131,7 @@ impl Renderer for ThreadPoolRenderer {
             camera,
             width,
             height,
-            5,
+            samples_number,
             self.input_sender.clone(),
             self.thread_number,
         );

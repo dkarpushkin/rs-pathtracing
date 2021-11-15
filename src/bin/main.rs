@@ -3,11 +3,12 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use image::GenericImageView;
 use log::error;
 use pixels::{Error, Pixels, SurfaceTexture};
 use ray_tracing::{
     algebra::Vector3d,
-    camera::{Camera, ImageParams},
+    camera::{Camera, ImageParams, MultisamplerRayCaster},
     renderer::{step_by_step, thread_pool_new, Renderer},
     world::World,
 };
@@ -77,6 +78,9 @@ fn main() -> Result<(), Error> {
                 )
                 .unwrap();
             }
+            if let Some((mouse_x, mouse_y)) = input.mouse() {
+                window.set_title(&format!("Ray Tracing Rust ({}, {})", mouse_x, mouse_y));
+            }    
 
             // Resize the window
             if let Some(size) = input.window_resized() {
@@ -197,18 +201,20 @@ impl RendererState {
     fn new(world_file: &str, render_mode: RenderMode) -> Self {
         let json_file =
             fs::read_to_string(world_file).expect("Something went wrong reading the file");
-        let world = World::from_json(&json_file)
+        let mut world = World::from_json(&json_file)
             .map_err(|err| {
                 error!("Loading world failed: {}", err);
                 Error::UserDefined(Box::new(err))
             })
             .unwrap();
+        world.ad_random_spheres(50);
 
         // right: (0.8783756394315214, 0, -0.4779709573324155)
         let camera = Camera::new(
-            // &Vector3d::new(0.2, -0.2, 0.3),
-            &Vector3d::new(0.0, 0.0, 0.0),
-            &Vector3d::new(0.0, 0.0, -1.0),
+            // &Vector3d::new(0.0, -0.3, 0.2),
+            // &Vector3d::new(-2.0, 0.0, -1.0),
+            &Vector3d::new(-11.0, 11.0, 11.0),
+            &Vector3d::new(2.0, -2.0, -2.0),
             // &Vector3d::new(-0.4755988783860254, 0.09950371902099893, -0.8740164282088437),
             &Vector3d::new(0.0, 1.0, 0.0),
             // &Vector3d::new(0.047559887838602544, 0.9950371902099893, 0.08740164282088438),
@@ -254,7 +260,8 @@ impl RendererState {
             self.is_redraw = false;
             self.is_finished = false;
             self.renderer.stop_rendering();
-            self.renderer.start_rendering(self.shared_camera.clone());
+            self.renderer
+                .start_rendering(self.shared_camera.clone(), 100);
         }
         if !self.is_finished {
             // let start = time::Instant::now();
@@ -324,6 +331,49 @@ impl RendererState {
             self.is_redraw = true;
         }
 
-        self.is_redraw ^ is_redrawn
+        if input.key_pressed(VirtualKeyCode::NumpadAdd) {
+            let mut cam = self.shared_camera.write().unwrap();
+            let old_fov = cam.fov();
+            cam.set_fov(old_fov - (1.0 as f64).to_radians());
+            self.is_redraw = true;
+        }
+        if input.key_pressed(VirtualKeyCode::NumpadSubtract) {
+            let mut cam = self.shared_camera.write().unwrap();
+            let old_fov = cam.fov();
+            cam.set_fov(old_fov + (1.0 as f64).to_radians());
+            self.is_redraw = true;
+        }
+
+        if input.key_pressed(VirtualKeyCode::R) {
+            let json = self.shared_world.read().unwrap().to_json();
+            fs::write("saved_world.json", json).expect("Could not save world file");
+        }
+
+        // if let Some((mouse_x, mouse_y)) = input.mouse() {
+        //     if input.mouse_pressed(0) {
+        //         let camera = self.shared_camera.read().unwrap();
+        //         let mut sampler = MultisamplerRayCaster::new(&camera, 1);
+        //         let rays = sampler.get_pixel_sample(mouse_x as u32, mouse_y as u32);
+        //         let index = mouse_x as u32 + mouse_y as u32 * camera.image().width;
+        //         let r = ray_tracing::renderer::trace_pixel_samples((index, rays), &*self.shared_world.read().unwrap(), 10);
+        //         println!("{}", r.1);
+        //     }
+        // }
+
+        if self.is_redraw && !is_redrawn {
+            let camera = self.shared_camera.read().unwrap();
+
+            println!("Rendered for camera:\n{}", camera);
+            // println!(
+            //     "Camera vectors dots:\ndir to right: {}\ndir to up: {}\nup to right: {}",
+            //     camera.direction() * camera.rigth(),
+            //     camera.direction() * camera.up(),
+            //     camera.up() * camera.rigth(),
+            // );
+
+            true
+        } else {
+            false
+        }
     }
 }
