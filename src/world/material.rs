@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::algebra::Vector3d;
 
-use super::{Ray, RayHit};
+use super::{Ray, RayHit, texture::Texture};
 
 pub struct Scatter {
     pub ray: Ray,
@@ -20,49 +20,52 @@ impl Scatter {
 
 #[typetag::serde(tag = "type", content = "material")]
 pub trait Material: Debug + Send + Sync {
-    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Scatter;
+    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter>;
+    fn emitted(&self, u: f64, v: f64, p: &Vector3d) -> Vector3d {
+        Vector3d::new(0.0, 0.0, 0.0)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lambertian {
-    pub albedo: Vector3d,
+    pub albedo: Box<dyn Texture>,
 }
 
 #[typetag::serde]
 impl Material for Lambertian {
-    fn scatter(&self, _ray: &Ray, ray_hit: &RayHit) -> Scatter {
+    fn scatter(&self, _ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
         let mut direction = &ray_hit.normal + Vector3d::random_unit();
         // let direction = &ray_hit.normal + Vector3d::random_in_hemisphere(&ray_hit.normal);
         if direction.is_zero() {
             direction = ray_hit.normal.clone()
         }
 
-        Scatter::new(
+        Some(Scatter::new(
             Ray::new(ray_hit.point.clone(), direction),
-            self.albedo.clone(),
-        )
+            self.albedo.value(ray_hit.u, ray_hit.v, &ray_hit.point),
+        ))
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Metal {
-    pub albedo: Vector3d,
+    pub albedo: Box<dyn Texture>,
     pub fuzz: f64,
 }
 
 #[typetag::serde]
 impl Material for Metal {
-    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Scatter {
+    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
         let reflected = ray.direction.reflect(&ray_hit.normal);
         let direction = if self.fuzz == 0.0 {
             reflected
         } else {
             reflected + self.fuzz * Vector3d::random_in_unit_sphere()
         };
-        Scatter::new(
+        Some(Scatter::new(
             Ray::new(ray_hit.point.clone(), direction),
-            self.albedo.clone(),
-        )
+            self.albedo.value(ray_hit.u, ray_hit.v, &ray_hit.point),
+        ))
     }
 }
 
@@ -81,7 +84,7 @@ impl Dielectric {
 
 #[typetag::serde]
 impl Material for Dielectric {
-    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Scatter {
+    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
         let refract_ratio = if ray_hit.is_front_face {
             1.0 / self.index_of_refraction
         } else {
@@ -99,15 +102,39 @@ impl Material for Dielectric {
             ray.direction.refract(&ray_hit.normal, refract_ratio)
         };
 
-        Scatter::new(
+        Some(Scatter::new(
             Ray::new(ray_hit.point.clone(), direction),
             Vector3d::new(1.0, 1.0, 1.0),
-        )
+        ))
     }
 }
 
-// struct EmptyMaterial {}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DiffuseLight {
+    pub emit: Box<dyn Texture>,
+}
 
-// impl Material for EmptyMaterial {
-//     fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> (Ray, Vector3d) {}
-// }
+#[typetag::serde]
+impl Material for DiffuseLight {
+    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
+        None
+    }
+
+    fn emitted(&self, u: f64, v: f64, p: &Vector3d) -> Vector3d {
+        self.emit.value(u, v, p)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EmptyMaterial;
+
+#[typetag::serde]
+impl Material for EmptyMaterial {
+    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
+        // Scatter::new(
+        //     Ray::new(ray_hit.point.clone(), ray_hit.normal.clone()),
+        //     Vector3d::new(1.0, 1.0, 1.0),
+        // )
+        None
+    }
+}

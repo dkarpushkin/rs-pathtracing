@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::{cmp::Ordering, fmt::Debug};
 
 use itertools::Itertools;
@@ -9,9 +8,11 @@ use crate::algebra::{approx_equal, Vector3d};
 
 use self::material::Material;
 use self::shapes::{Shape, Sphere};
+use self::texture::SolidColor;
 
 pub mod material;
 pub mod shapes;
+pub mod texture;
 
 #[derive(Debug)]
 pub struct Ray {
@@ -36,6 +37,8 @@ pub struct RayHit<'a> {
     pub is_front_face: bool,
     pub material: &'a Box<dyn Material>,
     pub ray: &'a Ray,
+    pub u: f64,
+    pub v: f64,
 }
 
 impl<'a> RayHit<'a> {
@@ -43,10 +46,13 @@ impl<'a> RayHit<'a> {
         point: Vector3d,
         normal: Vector3d,
         distance: f64,
-        is_front_face: bool,
         material: &'a Box<dyn Material>,
         ray: &'a Ray,
+        u: f64,
+        v: f64,
     ) -> Self {
+        let is_front_face = &normal * &ray.direction < 0.0;
+        let normal = if is_front_face { normal } else { -normal };
         Self {
             point,
             normal: normal.normalize(),
@@ -54,6 +60,8 @@ impl<'a> RayHit<'a> {
             is_front_face,
             material,
             ray,
+            u,
+            v,
         }
     }
 }
@@ -84,6 +92,13 @@ impl<'a> Ord for RayHit<'a> {
     }
 }
 
+fn ray_intersect<'a>(shape: &'a Box<dyn Shape>, ray: &'a Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+    // let origin = shape.get_transform().inverse.transform_point(&ray.origin);
+    // let dir = shape.get_transform().inverse.transform_vector(&ray.direction);
+
+    shape.ray_intersect(ray, min_t, max_t)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct World {
     shapes: Vec<Box<dyn Shape>>,
@@ -93,7 +108,7 @@ impl World {
     pub fn closest_hit<'a>(&'a self, ray: &'a Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
         self.shapes
             .iter()
-            .filter_map(|shape| shape.ray_intersect(ray, min_t, max_t))
+            .filter_map(|shape| ray_intersect(shape, ray, min_t, max_t))
             .min_by(|a, b| {
                 if approx_equal(a.distance, b.distance) {
                     Ordering::Equal
@@ -143,11 +158,15 @@ impl World {
 
             let mat: Box<dyn material::Material> = if mat_choice < 0.333 {
                 Box::new(material::Lambertian {
-                    albedo: Vector3d::random(0.0, 1.0),
+                    albedo: Box::new(SolidColor {
+                        color: Vector3d::random(0.0, 1.0),
+                    }),
                 })
             } else if mat_choice > 0.666 {
                 Box::new(material::Metal {
-                    albedo: Vector3d::random(0.0, 1.0),
+                    albedo: Box::new(SolidColor {
+                        color: Vector3d::random(0.0, 1.0),
+                    }),
                     fuzz: rng.gen(),
                 })
             } else {

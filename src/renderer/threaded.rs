@@ -12,7 +12,7 @@ use itertools::Itertools;
 
 use crate::{
     algebra::Vector3d,
-    camera::{Camera, MultisamplerRayCaster},
+    camera::{Camera, ray_caster::MultisamplerRayCaster},
     world::{Ray, World},
 };
 

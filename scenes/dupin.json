@@ -1,0 +1,156 @@
+{
+    "shapes": [
+        {
+            "type": "BruteForcableShape",
+            "step": 0.01,
+            "shape": {
+                "type": "DupinCyclide",
+                "a": 1.11,
+                "b": 0.99,
+                "c": 0.5,
+                "d": 0.1,
+                "sphere_radius": 2.5
+            },
+            "transform": {
+                "translate": {
+                    "x": 0.0,
+                    "y": 5.0,
+                    "z": 0.0
+                },
+                "rotate": {
+                    "x": 0.0,
+                    "y": -100.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 2.0,
+                    "y": 2.0,
+                    "z": 2.0
+                }
+            },
+            "material": {
+                "type": "Metal",
+                "material": {
+                    "albedo": {
+                        "type": "SolidColor",
+                        "color": {
+                            "x": 1.0,
+                            "y": 0.5,
+                            "z": 0.5
+                        },
+                        "scale": 5.0,
+                        "odd": {
+                            "type": "SolidColor",
+                            "color": {
+                                "x": 0.1,
+                                "y": 0.1,
+                                "z": 0.9
+                            }
+                        },
+                        "even": {
+                            "type": "SolidColor",
+                            "color": {
+                                "x": 0.9,
+                                "y": 0.1,
+                                "z": 0.1
+                            }
+                        },
+                        "multipliers": {
+                            "x": 30.0,
+                            "y": 30.0,
+                            "z": 30.0
+                        }
+                    },
+                    "fuzz": 0.3,
+                    "index_of_refraction": 1.5
+                }
+            }
+        },
+        {
+            "type": "TransformedSphere",
+            "transform": {
+                "translate": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotate": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 10.0,
+                    "y": 0.1,
+                    "z": 10.0
+                }
+            },
+            "material": {
+                "type": "Metal",
+                "material": {
+                    "albedo": {
+                        "type": "SolidColor",
+                        "color": {
+                            "x": 0.9,
+                            "y": 0.9,
+                            "z": 0.9
+                        }
+                    },
+                    "fuzz": 0.1,
+                    "index_of_refraction": 1.5
+                }
+            }
+        },
+        {
+            "type": "TransformedSphere",
+            "transform": {
+                "translate": {
+                    "x": 0.0,
+                    "y": -100.5,
+                    "z": 0.0
+                },
+                "rotate": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 100,
+                    "y": 100,
+                    "z": 100
+                }
+            },
+            "material": {
+                "type": "Lambertian",
+                "material": {
+                    "albedo": {
+                        "type": "SolidColor",
+                        "color": {
+                            "x": 0.0,
+                            "y": 1.0,
+                            "z": 0.0
+                        },
+                        "odd": {
+                            "type": "SolidColor",
+                            "color": {
+                                "x": 0.1,
+                                "y": 0.2,
+                                "z": 0.8
+                            }
+                        },
+                        "even": {
+                            "type": "SolidColor",
+                            "color": {
+                                "x": 0.9,
+                                "y": 0.2,
+                                "z": 0.1
+                            }
+                        }
+                    },
+                    "fuzz": 0.0,
+                    "index_of_refraction": 1.5
+                }
+            }
+        }
+    ]
+}

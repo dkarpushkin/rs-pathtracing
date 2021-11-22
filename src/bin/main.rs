@@ -1,14 +1,14 @@
+#![allow(dead_code)]
 use std::{
     env, fs,
     sync::{Arc, RwLock},
 };
 
-use image::GenericImageView;
 use log::error;
 use pixels::{Error, Pixels, SurfaceTexture};
 use ray_tracing::{
     algebra::Vector3d,
-    camera::{Camera, ImageParams, MultisamplerRayCaster},
+    camera::{ray_caster::MultisamplerRayCaster, Camera, CameraOrbitControl, ImageParams},
     renderer::{step_by_step, thread_pool_new, Renderer},
     world::World,
 };
@@ -21,7 +21,7 @@ use winit::{
 use winit_input_helper::WinitInputHelper;
 
 const SIZE: (u32, u32) = (1600, 900);
-// const SIZE: (u32, u32) = (640, 280);
+// const SIZE: (u32, u32) = (800, 450);
 // const BOX_SIZE: i16 = 64;
 
 fn main() -> Result<(), Error> {
@@ -80,17 +80,17 @@ fn main() -> Result<(), Error> {
             }
             if let Some((mouse_x, mouse_y)) = input.mouse() {
                 window.set_title(&format!("Ray Tracing Rust ({}, {})", mouse_x, mouse_y));
-            }    
+            }
 
             // Resize the window
             if let Some(size) = input.window_resized() {
-                println!("Resized");
+                // println!("Resized");
                 pixels.resize_surface(size.width, size.height);
                 window.request_redraw();
             }
 
             if state.process_input(&input) {
-                println!("User input");
+                // println!("User input");
                 window.request_redraw();
             }
             window.request_redraw();
@@ -195,35 +195,34 @@ struct RendererState {
     shared_world: Arc<RwLock<World>>,
     samples_num: u32,
     render_mode: RenderMode,
+
+    camera_control: CameraOrbitControl,
+    is_high_sampling: bool,
 }
 
 impl RendererState {
     fn new(world_file: &str, render_mode: RenderMode) -> Self {
         let json_file =
             fs::read_to_string(world_file).expect("Something went wrong reading the file");
-        let mut world = World::from_json(&json_file)
+        let world = World::from_json(&json_file)
             .map_err(|err| {
                 error!("Loading world failed: {}", err);
                 Error::UserDefined(Box::new(err))
             })
             .unwrap();
-        world.ad_random_spheres(50);
+        // world.ad_random_spheres(50);
 
         // right: (0.8783756394315214, 0, -0.4779709573324155)
         let camera = Camera::new(
-            // &Vector3d::new(0.0, -0.3, 0.2),
-            // &Vector3d::new(-2.0, 0.0, -1.0),
-            &Vector3d::new(-11.0, 11.0, 11.0),
-            &Vector3d::new(2.0, -2.0, -2.0),
-            // &Vector3d::new(-0.4755988783860254, 0.09950371902099893, -0.8740164282088437),
+            &Vector3d::new(13.0, 2.0, 3.0),
+            &Vector3d::new(-13.0, -2.0, -3.0),
             &Vector3d::new(0.0, 1.0, 0.0),
-            // &Vector3d::new(0.047559887838602544, 0.9950371902099893, 0.08740164282088438),
             &ImageParams {
                 width: SIZE.0,
                 height: SIZE.1,
             },
             1.0,
-            (90.0 as f64).to_radians(),
+            (120.0 as f64).to_radians(),
         );
 
         let color_buffer = vec![Vector3d::new(0.0, 0.0, 0.0); (SIZE.0 * SIZE.1) as usize];
@@ -241,27 +240,40 @@ impl RendererState {
             )),
         };
 
+        let shared_camera = Arc::new(RwLock::new(camera));
+        // let camera_control = CameraOrbitControl::new(
+        //     shared_camera.clone(),
+        //     PI as f64,
+        //     PI as f64 / 2.0,
+        //     Vector3d::new(0.0, 0.0, 0.0),
+        //     1.0,
+        // );
+        let camera_control =
+            CameraOrbitControl::from_camera(shared_camera.clone(), Vector3d::new(0.0, 0.0, 0.0));
         Self {
             is_redraw: true,
             is_finished: true,
             renderer: renderer,
             color_buffer,
-            shared_camera: Arc::new(RwLock::new(camera)),
+            shared_camera,
             shared_world: shared_world,
             samples_num: 0,
             render_mode,
+            camera_control,
+            is_high_sampling: false,
         }
     }
 
     fn render(&mut self, frame: &mut [u8]) {
         // println!("Render");
+        let samples = if self.is_high_sampling { 100 } else { 1 };
 
         if self.is_redraw && self.is_finished {
             self.is_redraw = false;
             self.is_finished = false;
             self.renderer.stop_rendering();
             self.renderer
-                .start_rendering(self.shared_camera.clone(), 100);
+                .start_rendering(self.shared_camera.clone(), samples);
         }
         if !self.is_finished {
             // let start = time::Instant::now();
@@ -286,48 +298,27 @@ impl RendererState {
         let is_redrawn = self.is_redraw;
 
         if input.key_pressed(VirtualKeyCode::A) {
-            self.shared_camera.write().unwrap().transfer(0.0, 0.1, 0.0);
+            self.camera_control.rotate_horizontal(-0.01);
             self.is_redraw = true;
         }
         if input.key_pressed(VirtualKeyCode::D) {
-            self.shared_camera.write().unwrap().transfer(0.0, -0.1, 0.0);
+            self.camera_control.rotate_horizontal(0.01);
             self.is_redraw = true;
         }
         if input.key_pressed(VirtualKeyCode::W) {
-            self.shared_camera.write().unwrap().transfer(0.1, 0.0, 0.0);
+            self.camera_control.rotate_vertical(-0.01);
             self.is_redraw = true;
         }
         if input.key_pressed(VirtualKeyCode::S) {
-            self.shared_camera.write().unwrap().transfer(-0.1, 0.0, 0.0);
+            self.camera_control.rotate_vertical(0.01);
             self.is_redraw = true;
         }
         if input.key_pressed(VirtualKeyCode::LShift) {
-            self.shared_camera.write().unwrap().transfer(0.0, 0.0, 0.1);
+            self.camera_control.move_towards(-0.1);
             self.is_redraw = true;
         }
         if input.key_pressed(VirtualKeyCode::LControl) {
-            self.shared_camera.write().unwrap().transfer(0.0, 0.0, -0.1);
-            self.is_redraw = true;
-        }
-
-        if input.key_pressed(VirtualKeyCode::Left) {
-            self.shared_camera.write().unwrap().rotate_local(0.0, -0.1);
-            // self.shared_camera.write().unwrap().rotate_global(0.1, 0.0, 0.0);
-            self.is_redraw = true;
-        }
-        if input.key_pressed(VirtualKeyCode::Right) {
-            self.shared_camera.write().unwrap().rotate_local(0.0, 0.1);
-            // self.shared_camera.write().unwrap().rotate_global(-0.1, 0.0, 0.0);
-            self.is_redraw = true;
-        }
-        if input.key_pressed(VirtualKeyCode::Up) {
-            self.shared_camera.write().unwrap().rotate_local(0.1, 0.0);
-            // self.shared_camera.write().unwrap().rotate_global(0.0, 0.1, 0.0);
-            self.is_redraw = true;
-        }
-        if input.key_pressed(VirtualKeyCode::Down) {
-            self.shared_camera.write().unwrap().rotate_local(-0.1, 0.0);
-            // self.shared_camera.write().unwrap().rotate_global(0.0, -0.1, 0.0);
+            self.camera_control.move_towards(0.1);
             self.is_redraw = true;
         }
 
@@ -349,27 +340,36 @@ impl RendererState {
             fs::write("saved_world.json", json).expect("Could not save world file");
         }
 
-        // if let Some((mouse_x, mouse_y)) = input.mouse() {
-        //     if input.mouse_pressed(0) {
-        //         let camera = self.shared_camera.read().unwrap();
-        //         let mut sampler = MultisamplerRayCaster::new(&camera, 1);
-        //         let rays = sampler.get_pixel_sample(mouse_x as u32, mouse_y as u32);
-        //         let index = mouse_x as u32 + mouse_y as u32 * camera.image().width;
-        //         let r = ray_tracing::renderer::trace_pixel_samples((index, rays), &*self.shared_world.read().unwrap(), 10);
-        //         println!("{}", r.1);
-        //     }
-        // }
+        if input.key_pressed(VirtualKeyCode::Space) {
+            if self.is_high_sampling {
+                self.is_high_sampling = false;
+            } else {
+                self.is_high_sampling = true;
+                self.is_redraw = true;
+            }
+        }
+
+        if input.mouse_pressed(0) {
+            if let Some((mouse_x, mouse_y)) = input.mouse() {
+                let camera = self.shared_camera.read().unwrap();
+                let mut sampler = MultisamplerRayCaster::new(&camera, 500);
+                let rays = sampler.get_pixel_sample(mouse_x as u32, mouse_y as u32);
+                let index = mouse_x as u32 + mouse_y as u32 * camera.image().width;
+                println!("({}, {})", mouse_x, mouse_y);
+                println!("rays: {:?}", &rays);
+                let r = ray_tracing::renderer::trace_pixel_samples(
+                    (index, rays),
+                    &*self.shared_world.read().unwrap(),
+                    10,
+                );
+                println!("{}", r.1);
+            }
+        }
 
         if self.is_redraw && !is_redrawn {
             let camera = self.shared_camera.read().unwrap();
 
             println!("Rendered for camera:\n{}", camera);
-            // println!(
-            //     "Camera vectors dots:\ndir to right: {}\ndir to up: {}\nup to right: {}",
-            //     camera.direction() * camera.rigth(),
-            //     camera.direction() * camera.up(),
-            //     camera.up() * camera.rigth(),
-            // );
 
             true
         } else {

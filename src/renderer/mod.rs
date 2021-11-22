@@ -10,7 +10,7 @@ use itertools::Itertools;
 
 use crate::{
     algebra::Vector3d,
-    camera::{Camera, MultisamplerRayCaster},
+    camera::{Camera, ray_caster::MultisamplerRayCaster},
     world::{Ray, World},
 };
 
@@ -25,19 +25,11 @@ pub fn ray_color(world: &World, ray: &Ray, depth: u32) -> Vector3d {
             if depth == 0 {
                 Vector3d::new(0.0, 0.0, 0.0)
             } else {
-                // let ray_color = ray_color(
-                //     world,
-                //     &Ray {
-                //         origin: ray_hit.point.clone(),
-                //         // direction: Vector3d::random_in_hemisphere(&ray_hit.normal),
-                //         direction: &ray_hit.normal + Vector3d::random_unit(),
-                //     },
-                //     depth - 1,
-                // );
-                // 0.5 * ray_color
-
-                let scatter = ray_hit.material.scatter(ray, &ray_hit);
-                scatter.attenuation.product(&ray_color(world, &scatter.ray, depth - 1))
+                if let Some(scatter) = ray_hit.material.scatter(ray, &ray_hit) {
+                    scatter.attenuation.product(&ray_color(world, &scatter.ray, depth - 1))
+                } else {
+                    ray_hit.material.emitted(ray_hit.u, ray_hit.v, &ray_hit.point)
+                }
             }
             // 0.5 * (ray_hit.normal.normalize() + Vector3d::new(1.0, 1.0, 1.0))
         }
@@ -45,6 +37,7 @@ pub fn ray_color(world: &World, ray: &Ray, depth: u32) -> Vector3d {
             let unit_vector = ray.direction.clone();
             let t = 0.5 * (unit_vector.y + 1.0);
             (1.0 - t) * Vector3d::new(1.0, 1.0, 1.0) + t * Vector3d::new(0.5, 0.7, 1.0)
+            // Vector3d::new(0.0, 0.0, 0.0)
         }
     }
 }

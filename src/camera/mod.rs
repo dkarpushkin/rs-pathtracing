@@ -1,11 +1,12 @@
-use std::{fmt::Display, ops::Range};
+use std::{
+    f64::consts::PI,
+    fmt::Display,
+    sync::{Arc, RwLock},
+};
 
-use itertools::Itertools;
-use rand::{prelude::ThreadRng, Rng};
+use crate::algebra::Vector3d;
 
-use crate::{algebra::Vector3d, world::Ray};
-
-pub mod uniform_camera;
+pub mod ray_caster;
 
 #[derive(Debug, Clone)]
 pub struct ImageParams {
@@ -199,109 +200,98 @@ impl Camera {
     }
 }
 
-#[derive(Debug)]
-pub struct MultisamplerRayCaster {
-    // camera: Arc<RwLock<Camera>>,
-    camera_position: Vector3d,
-    camera_right: Vector3d,
-    camera_up: Vector3d,
-
-    left_top: Vector3d,
-    coords_iter: itertools::Product<Range<u32>, Range<u32>>,
-    pixel_resolution: f64,
-    rng: ThreadRng,
-    samples_number: u32,
+pub struct CameraOrbitControl {
+    camera: Arc<RwLock<Camera>>,
+    phi: f64,
+    theta: f64,
+    object: Vector3d,
+    distance: f64,
 }
 
-impl MultisamplerRayCaster {
-    pub fn new(camera: &Camera, samples_number: u32) -> Self {
-        let center = &camera.position + camera.focal_length * &camera.direction;
+impl CameraOrbitControl {
+    pub fn new(
+        camera: Arc<RwLock<Camera>>,
+        phi: f64,
+        theta: f64,
+        object: Vector3d,
+        distance: f64,
+    ) -> Self {
+        let result = Self {
+            camera,
+            phi,
+            theta,
+            object,
+            distance,
+        };
+        result.lookat();
+
+        result
+    }
+
+    pub fn from_camera(camera: Arc<RwLock<Camera>>, object: Vector3d) -> Self {
+        let cam = camera.write().unwrap();
+        let pos = cam.position();
+        let dir = &object - pos;
+        let distance = dir.length();
+        let theta = ((pos.y - object.z) / distance).acos();
+        let phi = ((pos.z - object.y) / distance).atan2((pos.x - object.x) / distance);
+
         Self {
-            left_top: &camera.position + camera.focal_length * &camera.direction
-                - &camera.rigth * (camera.viewport_width / 2.0)
-                + &camera.up * (camera.viewport_height / 2.0),
-            coords_iter: (0..camera.image.height).cartesian_product(0..camera.image.width),
-            pixel_resolution: camera.viewport_width / camera.image.width as f64,
-            rng: rand::thread_rng(),
-            samples_number: samples_number,
-            camera_position: camera.position.clone(),
-            camera_right: camera.rigth.clone(),
-            camera_up: camera.up.clone(),
+            camera: camera.clone(),
+            phi,
+            theta,
+            object,
+            distance
         }
     }
 
-    pub fn get_ray(&self, x: f64, y: f64) -> Ray {
-        let dir = &self.left_top + (self.pixel_resolution * x) * &self.camera_right
-            - (self.pixel_resolution * y) * &self.camera_up;
-        Ray::new(self.camera_position.clone(), dir - &self.camera_position)
+    pub fn lookat(&self) {
+        let pos = Vector3d::new(
+            self.object.x + self.distance * self.theta.sin() * self.phi.cos(),
+            self.object.z + self.distance * self.theta.cos(),
+            self.object.y + self.distance * self.theta.sin() * self.phi.sin(),
+        );
+        let dir = &self.object - &pos;
+
+        let mut cam = self.camera.write().unwrap();
+        // println!("dir: {}", dir);
+        // println!("Camera state:\n{}", cam);
+        // let up = cam.rigth().cross(&dir);
+        cam.set_up(Vector3d::new(0.0, 1.0, 0.0));
+        cam.set_direction(dir);
+        cam.set_position(pos);
+
+        // println!("Theta: {}; Phi: {}", self.theta, self.phi);
+        // println!("Camera state:\n{}", cam);
     }
 
-    pub fn get_pixel_sample(&mut self, x: u32, y: u32) -> Vec<Ray> {
-        (0..self.samples_number)
-            .map(|_| {
-                let u: f64 = self.rng.gen();
-                let v: f64 = self.rng.gen();
-
-                self.get_ray(x as f64 + u, y as f64 + v)
-            })
-            .collect()
-    }
-}
-
-impl Iterator for MultisamplerRayCaster {
-    type Item = (u32, u32, Vec<Ray>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (y, x) = self.coords_iter.next()?;
-        let samples = (0..self.samples_number)
-            .map(|_| {
-                let u: f64 = self.rng.gen();
-                let v: f64 = self.rng.gen();
-
-                let dir = &self.left_top
-                    + (self.pixel_resolution * (x as f64 + u)) * &self.camera_right
-                    - (self.pixel_resolution * (y as f64 + v)) * &self.camera_up;
-                Ray::new(self.camera_position.clone(), dir - &self.camera_position)
-            })
-            .collect();
-
-        Some((x, y, samples))
-    }
-}
-
-pub struct SinglesamplerRayCaster<'a> {
-    camera: &'a Camera,
-    left_bottom: Vector3d,
-    coords_iter: itertools::Product<Range<u32>, Range<u32>>,
-    pixel_resolution: f64,
-}
-
-impl<'a> SinglesamplerRayCaster<'a> {
-    pub fn new(camera: &'a Camera) -> Self {
-        let center = &camera.position + camera.focal_length * &camera.direction;
-        Self {
-            camera: camera,
-            left_bottom: center
-                - &camera.rigth * (camera.viewport_width / 2.0)
-                - &camera.up * (camera.viewport_height / 2.0),
-            coords_iter: (0..camera.image.height).cartesian_product(0..camera.image.width),
-            pixel_resolution: camera.viewport_width / camera.image.width as f64,
+    pub fn rotate_horizontal(&mut self, frac: f64) {
+        self.phi += frac * PI;
+        if self.phi > 2.0 * PI {
+            self.phi -= 2.0 * PI;
         }
+        if self.phi < 0.0 {
+            self.phi += 2.0 * PI;
+        }
+
+        self.lookat();
     }
-}
 
-impl<'a> Iterator for SinglesamplerRayCaster<'a> {
-    type Item = (u32, u32, Ray);
+    pub fn rotate_vertical(&mut self, frac: f64) {
+        self.theta += frac * PI;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let (v, u) = self.coords_iter.next()?;
+        if self.theta > PI {
+            self.theta = PI;
+        } else if self.theta < 0.0 {
+            self.theta = 0.0;
+        }
 
-        let dir = &self.left_bottom
-            + (self.pixel_resolution * (u as f64 + 0.5)) * &self.camera.rigth
-            + (self.pixel_resolution * (v as f64 + 0.5)) * &self.camera.up;
+        self.lookat();
+    }
 
-        let ray = Ray::new(self.camera.position.clone(), dir);
+    pub fn move_towards(&mut self, frac: f64) {
+        self.distance += frac * self.distance;
 
-        Some((u, v, ray))
+        self.lookat();
     }
 }

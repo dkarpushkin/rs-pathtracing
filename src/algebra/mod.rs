@@ -1,19 +1,18 @@
-use std::{
-    fmt::Display,
-    iter::Sum,
-    ops::{Add, AddAssign, Div, Mul, Neg, Sub},
-};
+use std::{fmt::Display, iter::Sum, ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub}};
 
+use num::Float;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-pub mod matrix;
+pub mod transform;
+pub mod equation;
+pub mod noise;
 
 pub fn approx_equal(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-15
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct Vector3d {
     pub x: f64,
     pub y: f64,
@@ -53,19 +52,6 @@ impl Vector3d {
     }
 
     pub fn random_unit() -> Vector3d {
-        // let mut rng = rand::thread_rng();
-        // loop {
-        //     let random_vector = Vector3d {
-        //         x: rng.gen_range(-1.0..1.0),
-        //         y: rng.gen_range(-1.0..1.0),
-        //         z: rng.gen_range(-1.0..1.0),
-        //     };
-        //     let len = random_vector.squared_length();
-        //     if len <= 1.0 {
-        //         break random_vector / len;
-        //     }
-        // }
-
         Vector3d::random_in_unit_sphere().normalize()
     }
 
@@ -122,8 +108,20 @@ impl Vector3d {
         }
     }
 
+    pub fn powi(&self, n: i32) -> Vector3d {
+        Vector3d::new(self.x.powi(n), self.y.powi(n), self.z.powi(n))
+    }
+
     pub fn is_zero(&self) -> bool {
         approx_equal(self.x, 0.0) && approx_equal(self.y, 0.0) && approx_equal(self.z, 0.0)
+    }
+
+    pub fn fract(&self) -> Vector3d {
+        Vector3d {
+            x: self.x.fract(),
+            y: self.y.fract(),
+            z: self.z.fract()
+        }
     }
 }
 
@@ -221,10 +219,10 @@ impl Sub<&Vector3d> for Vector3d {
     }
 }
 
-impl Sub<&Vector3d> for &Vector3d {
+impl Sub<Vector3d> for &Vector3d {
     type Output = Vector3d;
 
-    fn sub(self, rhs: &Vector3d) -> Self::Output {
+    fn sub(self, rhs: Vector3d) -> Self::Output {
         Self::Output {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -233,10 +231,10 @@ impl Sub<&Vector3d> for &Vector3d {
     }
 }
 
-impl Sub<Vector3d> for &Vector3d {
+impl Sub<&Vector3d> for &Vector3d {
     type Output = Vector3d;
 
-    fn sub(self, rhs: Vector3d) -> Self::Output {
+    fn sub(self, rhs: &Vector3d) -> Self::Output {
         Self::Output {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -257,6 +255,14 @@ impl Mul<&Vector3d> for Vector3d {
     type Output = f64;
 
     fn mul(self, rhs: &Vector3d) -> Self::Output {
+        self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+    }
+}
+
+impl Mul<Vector3d> for &Vector3d {
+    type Output = f64;
+
+    fn mul(self, rhs: Vector3d) -> Self::Output {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 }
@@ -341,6 +347,54 @@ impl Div<f64> for &Vector3d {
     }
 }
 
+impl Div<Vector3d> for Vector3d {
+    type Output = Vector3d;
+
+    fn div(self, rhs: Vector3d) -> Self::Output {
+        Vector3d {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+            z: self.z / rhs.z
+        }
+    }
+}
+
+impl Div<&Vector3d> for Vector3d {
+    type Output = Vector3d;
+
+    fn div(self, rhs: &Vector3d) -> Self::Output {
+        Vector3d {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+            z: self.z / rhs.z
+        }
+    }
+}
+
+impl Div<Vector3d> for &Vector3d {
+    type Output = Vector3d;
+
+    fn div(self, rhs: Vector3d) -> Self::Output {
+        Vector3d {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+            z: self.z / rhs.z
+        }
+    }
+}
+
+impl Div<&Vector3d> for &Vector3d {
+    type Output = Vector3d;
+
+    fn div(self, rhs: &Vector3d) -> Self::Output {
+        Vector3d {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+            z: self.z / rhs.z
+        }
+    }
+}
+
 impl AddAssign for Vector3d {
     fn add_assign(&mut self, rhs: Self) {
         self.x += rhs.x;
@@ -354,6 +408,14 @@ impl AddAssign<&Vector3d> for Vector3d {
         self.x += rhs.x;
         self.y += rhs.y;
         self.z += rhs.z;
+    }
+}
+
+impl MulAssign<f64> for Vector3d {
+    fn mul_assign(&mut self, rhs: f64) {
+        self.x *= rhs;
+        self.y *= rhs;
+        self.z *= rhs;
     }
 }
 

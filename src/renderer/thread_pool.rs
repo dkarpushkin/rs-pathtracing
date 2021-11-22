@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::algebra::Vector3d;
-use crate::camera::{Camera, MultisamplerRayCaster};
+use crate::camera::{Camera, ray_caster::MultisamplerRayCaster};
 use crate::world::{Ray, World};
 use itertools::Itertools;
 

@@ -21,7 +21,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/main.exe",
-            "args": ["${workspaceFolder}/world_small.json"],
+            "args": ["${workspaceFolder}/scenes/sine.json"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

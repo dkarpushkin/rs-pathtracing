@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::algebra::{Vector3d, matrix::Matrix4x4d};
+use crate::algebra::{Vector3d, transform::Transform};
 
 use super::ImageParams;
 
@@ -35,7 +35,7 @@ impl Camera {
         img_params: &ImageParams,
         focal_length: f64,
         fov: f64,
-        transform: Matrix4x4d
+        transform: Transform
     ) -> Self {
         let aspect_ratio = img_params.width as f64 / img_params.height as f64;
         let viewport_width = (fov / 2.0).tan() * focal_length * 2.0;
