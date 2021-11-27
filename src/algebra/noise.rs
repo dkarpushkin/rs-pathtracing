@@ -1,18 +1,20 @@
 use super::{approx_equal, Vector3d};
-use itertools::{assert_equal, Itertools};
+use itertools::{assert_equal, Itertools, MultiProduct};
 use num::Float;
 use rand::{
     prelude::{IteratorRandom, SliceRandom},
     thread_rng, Rng,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Perlin {
     perm_x: Vec<usize>,
     perm_y: Vec<usize>,
     perm_z: Vec<usize>,
     ranfloat: Vec<f64>,
     ranvec: Vec<Vector3d>,
+
+    cartesian: Vec<Vec<i32>>,
 }
 
 impl Default for Perlin {
@@ -37,6 +39,7 @@ impl Perlin {
             perm_z,
             ranfloat: (0..256).map(|_| rng.gen()).collect_vec(),
             ranvec: (0..256).map(|_| Vector3d::random(-1.0, 1.0)).collect_vec(),
+            cartesian: (0..3).map(|_| 0..2).multi_cartesian_product().collect_vec(),
         }
     }
 
@@ -53,18 +56,13 @@ impl Perlin {
         let v2 = v * v * (3.0 - 2.0 * v);
         let w2 = w * w * (3.0 - 2.0 * w);
 
-        (0..3)
-            .map(|_| 0..2)
-            .multi_cartesian_product()
+        self.cartesian
+            .iter()
             .map(|d| {
-                (
-                    self.ranvec[self.perm_x[((d[0] as i32 + x) & 255) as usize]
-                        ^ self.perm_y[((d[1] as i32 + y) & 255) as usize]
-                        ^ self.perm_z[((d[2] as i32 + z) & 255) as usize]],
-                    d,
-                )
-            })
-            .map(|(c, d)| {
+                let c = self.ranvec[self.perm_x[((d[0] as i32 + x) & 255) as usize]
+                    ^ self.perm_y[((d[1] as i32 + y) & 255) as usize]
+                    ^ self.perm_z[((d[2] as i32 + z) & 255) as usize]];
+
                 let fi = d[0] as f64;
                 let fj = d[1] as f64;
                 let fk = d[2] as f64;

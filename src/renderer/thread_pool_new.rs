@@ -6,12 +6,14 @@ use std::{
     thread::JoinHandle,
 };
 
-use crate::algebra::Vector3d;
 use crate::camera::Camera;
-use crate::world::World;
+use crate::world::Scene;
+use crate::{algebra::Vector3d, camera::ray_caster::ImageParams};
 use itertools::Itertools;
 
-use super::{InputDataVecOption, OutputDataVecOption, Renderer, new_dispatcher_thread, new_worker_thread};
+use super::{
+    new_dispatcher_thread, new_worker_thread, InputDataVecOption, OutputDataVecOption, Renderer,
+};
 
 pub struct ThreadPoolRenderer {
     thread_number: u32,
@@ -28,12 +30,12 @@ pub struct ThreadPoolRenderer {
     // control_receiver: Arc<Mutex<Receiver<()>>>,
     parking: Arc<(Mutex<bool>, Condvar)>,
 
-    world: Arc<RwLock<World>>,
+    world: Arc<RwLock<Scene>>,
     is_started: bool,
 }
 
 impl ThreadPoolRenderer {
-    pub fn new(world: Arc<RwLock<World>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
+    pub fn new(scene: Arc<RwLock<Scene>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
         let (input_sender, input_receiver) = channel();
         let (output_sender, output_receiver) = channel();
         // let (control_sender, control_receiver) = channel();
@@ -48,7 +50,7 @@ impl ThreadPoolRenderer {
             // control_sender,
             // control_receiver: Arc::new(Mutex::new(control_receiver)),
             parking: Arc::new((Mutex::new(false), Condvar::new())),
-            world,
+            world: scene,
             is_started: false,
         };
 
@@ -69,53 +71,6 @@ impl ThreadPoolRenderer {
 
         result
     }
-
-    pub fn render_step_to(&mut self, camera: Arc<RwLock<Camera>>, buffer: &mut Vec<Vector3d>) {
-        let width = camera.read().unwrap().image().width;
-        let height = camera.read().unwrap().image().height;
-
-        new_dispatcher_thread(camera, width, height, 1, self.input_sender.clone(), self.thread_number);
-
-        let (lock, cvar) = &*self.parking;
-        {
-            let mut running = lock.lock().unwrap();
-            *running = true;
-            cvar.notify_all();
-        }
-
-        let mut finished = 0;
-        for results in &self.output_receiver {
-            let results = match results {
-                Some(v) => v,
-                None => {
-                    finished += 1;
-                    if finished == self.thread_number {
-                        let mut running = lock.lock().unwrap();
-                        *running = false;
-
-                        break;
-                    }
-                    continue;
-                }
-            };
-
-            // println!("Received {}", results.len());
-            if self.is_started {
-                for (index, color) in results {
-                    let current_color = &buffer[index as usize];
-                    buffer[index as usize] = &color + current_color;
-                }
-            } else {
-                for (index, color) in results {
-                    buffer[index as usize] = color;
-                }
-            }
-        }
-
-        if self.is_started {
-            self.is_started = true;
-        }
-    }
 }
 
 impl Renderer for ThreadPoolRenderer {
@@ -123,9 +78,14 @@ impl Renderer for ThreadPoolRenderer {
         self.is_started = false;
     }
 
-    fn start_rendering(&mut self, camera: Arc<RwLock<Camera>>, samples_number: u32) {
-        let width = camera.read().unwrap().image().width;
-        let height = camera.read().unwrap().image().height;
+    fn start_rendering(
+        &mut self,
+        camera: Arc<RwLock<Camera>>,
+        img_params: &ImageParams,
+        samples_number: u32,
+    ) {
+        let width = img_params.width;
+        let height = img_params.height;
 
         new_dispatcher_thread(
             camera,

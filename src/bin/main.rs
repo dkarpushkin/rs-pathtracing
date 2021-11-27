@@ -8,9 +8,12 @@ use log::error;
 use pixels::{Error, Pixels, SurfaceTexture};
 use ray_tracing::{
     algebra::Vector3d,
-    camera::{ray_caster::MultisamplerRayCaster, Camera, CameraOrbitControl, ImageParams},
+    camera::{
+        ray_caster::{ImageParams, MultisamplerRayCaster},
+        Camera, CameraOrbitControl,
+    },
     renderer::{step_by_step, thread_pool_new, Renderer},
-    world::World,
+    world::Scene,
 };
 use winit::{
     dpi::LogicalSize,
@@ -191,8 +194,9 @@ struct RendererState {
     is_finished: bool,
     renderer: Box<dyn Renderer>,
     color_buffer: Vec<Vector3d>,
+    img_params: ImageParams,
     shared_camera: Arc<RwLock<Camera>>,
-    shared_world: Arc<RwLock<World>>,
+    shared_world: Arc<RwLock<Scene>>,
     samples_num: u32,
     render_mode: RenderMode,
 
@@ -204,7 +208,7 @@ impl RendererState {
     fn new(world_file: &str, render_mode: RenderMode) -> Self {
         let json_file =
             fs::read_to_string(world_file).expect("Something went wrong reading the file");
-        let world = World::from_json(&json_file)
+        let scene = Scene::from_json(&json_file)
             .map_err(|err| {
                 error!("Loading world failed: {}", err);
                 Error::UserDefined(Box::new(err))
@@ -212,42 +216,29 @@ impl RendererState {
             .unwrap();
         // world.ad_random_spheres(50);
 
-        // right: (0.8783756394315214, 0, -0.4779709573324155)
-        let camera = Camera::new(
-            &Vector3d::new(13.0, 2.0, 3.0),
-            &Vector3d::new(-13.0, -2.0, -3.0),
-            &Vector3d::new(0.0, 1.0, 0.0),
-            &ImageParams {
-                width: SIZE.0,
-                height: SIZE.1,
-            },
-            1.0,
-            (120.0 as f64).to_radians(),
-        );
-
+        // let camera = Camera::new(
+        //     &Vector3d::new(13.0, 2.0, 3.0),
+        //     &Vector3d::new(-13.0, -2.0, -3.0),
+        //     &Vector3d::new(0.0, 1.0, 0.0),
+        //     1.0,
+        //     (120.0 as f64).to_radians(),
+        // );
         let color_buffer = vec![Vector3d::new(0.0, 0.0, 0.0); (SIZE.0 * SIZE.1) as usize];
-        let shared_world = Arc::new(RwLock::new(world));
+        let shared_camera = Arc::new(RwLock::new(scene.camera.clone()));
+        let shared_scene = Arc::new(RwLock::new(scene));
         let renderer: Box<dyn Renderer> = match render_mode {
             RenderMode::Static => Box::new(thread_pool_new::ThreadPoolRenderer::new(
-                shared_world.clone(),
+                shared_scene.clone(),
                 12,
                 50,
             )),
             RenderMode::StepByStep => Box::new(step_by_step::ThreadPoolRenderer::new(
-                shared_world.clone(),
+                shared_scene.clone(),
                 12,
                 50,
             )),
         };
 
-        let shared_camera = Arc::new(RwLock::new(camera));
-        // let camera_control = CameraOrbitControl::new(
-        //     shared_camera.clone(),
-        //     PI as f64,
-        //     PI as f64 / 2.0,
-        //     Vector3d::new(0.0, 0.0, 0.0),
-        //     1.0,
-        // );
         let camera_control =
             CameraOrbitControl::from_camera(shared_camera.clone(), Vector3d::new(0.0, 0.0, 0.0));
         Self {
@@ -255,8 +246,12 @@ impl RendererState {
             is_finished: true,
             renderer: renderer,
             color_buffer,
+            img_params: ImageParams {
+                width: SIZE.0,
+                height: SIZE.1,
+            },
             shared_camera,
-            shared_world: shared_world,
+            shared_world: shared_scene,
             samples_num: 0,
             render_mode,
             camera_control,
@@ -273,7 +268,7 @@ impl RendererState {
             self.is_finished = false;
             self.renderer.stop_rendering();
             self.renderer
-                .start_rendering(self.shared_camera.clone(), samples);
+                .start_rendering(self.shared_camera.clone(), &self.img_params, samples);
         }
         if !self.is_finished {
             // let start = time::Instant::now();
@@ -352,9 +347,9 @@ impl RendererState {
         if input.mouse_pressed(0) {
             if let Some((mouse_x, mouse_y)) = input.mouse() {
                 let camera = self.shared_camera.read().unwrap();
-                let mut sampler = MultisamplerRayCaster::new(&camera, 500);
+                let mut sampler = MultisamplerRayCaster::new(&camera, &self.img_params, 1);
                 let rays = sampler.get_pixel_sample(mouse_x as u32, mouse_y as u32);
-                let index = mouse_x as u32 + mouse_y as u32 * camera.image().width;
+                let index = mouse_x as u32 + mouse_y as u32 * self.img_params.width;
                 println!("({}, {})", mouse_x, mouse_y);
                 println!("rays: {:?}", &rays);
                 let r = ray_tracing::renderer::trace_pixel_samples(
@@ -369,7 +364,7 @@ impl RendererState {
         if self.is_redraw && !is_redrawn {
             let camera = self.shared_camera.read().unwrap();
 
-            println!("Rendered for camera:\n{}", camera);
+            println!("Rendering for camera:\n{}", camera);
 
             true
         } else {

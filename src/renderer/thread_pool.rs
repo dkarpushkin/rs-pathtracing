@@ -6,9 +6,9 @@ use std::{
     thread::{spawn, JoinHandle},
 };
 
-use crate::algebra::Vector3d;
+use crate::{algebra::Vector3d, camera::ray_caster::ImageParams};
 use crate::camera::{Camera, ray_caster::MultisamplerRayCaster};
-use crate::world::{Ray, World};
+use crate::world::{ray::Ray, Scene};
 use itertools::Itertools;
 
 use super::ray_color;
@@ -36,12 +36,12 @@ pub struct ThreadPoolRenderer {
     // control_receiver: Arc<Mutex<Receiver<()>>>,
     parking: Arc<(Mutex<bool>, Condvar)>,
 
-    world: Arc<RwLock<World>>,
+    world: Arc<RwLock<Scene>>,
     is_started: bool,
 }
 
 impl ThreadPoolRenderer {
-    pub fn new(world: Arc<RwLock<World>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
+    pub fn new(world: Arc<RwLock<Scene>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
         let (input_sender, input_receiver) = channel();
         let (output_sender, output_receiver) = channel();
         // let (control_sender, control_receiver) = channel();
@@ -73,12 +73,13 @@ impl ThreadPoolRenderer {
         self.is_started = false;
     }
 
-    pub fn render_to(&self, camera: Arc<RwLock<Camera>>, buffer: &mut Vec<Vector3d>) {
-        let width = camera.read().unwrap().image().width;
-        let height = camera.read().unwrap().image().height;
+    pub fn render_to(&self, camera: Arc<RwLock<Camera>>, img_params: &ImageParams, buffer: &mut Vec<Vector3d>) {
+        let width = img_params.width;
+        let height = img_params.height;
 
         self.new_dispatcher_thread(
             camera,
+            img_params,
             ((width * height) / self.thread_number / 8) as usize,
             5,
         );
@@ -118,12 +119,13 @@ impl ThreadPoolRenderer {
         // dispather.join().unwrap();
     }
 
-    pub fn render_step_to(&mut self, camera: Arc<RwLock<Camera>>, buffer: &mut Vec<Vector3d>) {
-        let width = camera.read().unwrap().image().width;
-        let height = camera.read().unwrap().image().height;
+    pub fn render_step_to(&mut self, camera: Arc<RwLock<Camera>>, img_params: &ImageParams, buffer: &mut Vec<Vector3d>) {
+        let width = img_params.width;
+        let height = img_params.height;
 
         self.new_dispatcher_thread(
             camera,
+            img_params,
             ((width * height) / self.thread_number / 8) as usize,
             1,
         );
@@ -172,14 +174,16 @@ impl ThreadPoolRenderer {
     fn new_dispatcher_thread(
         &self,
         camera: Arc<RwLock<Camera>>,
+        img_params: &ImageParams,
         chunk_size: usize,
         samples_number: u32,
     ) -> JoinHandle<()> {
         let input_sender = self.input_sender.clone();
         let thread_number = self.thread_number;
+        let img_params = img_params.clone();
 
         spawn(move || {
-            let rays = MultisamplerRayCaster::new(&*camera.read().unwrap(), samples_number);
+            let rays = MultisamplerRayCaster::new(&*camera.read().unwrap(), &img_params, samples_number);
             for chunk in &rays.chunks(chunk_size) {
                 let chunk_vec = chunk.collect_vec();
                 input_sender.lock().unwrap().send(Some(chunk_vec)).unwrap();

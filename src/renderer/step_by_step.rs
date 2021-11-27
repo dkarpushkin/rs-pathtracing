@@ -6,9 +6,9 @@ use std::{
     thread::JoinHandle,
 };
 
-use crate::algebra::Vector3d;
+use crate::{algebra::Vector3d, camera::ray_caster::ImageParams};
 use crate::camera::Camera;
-use crate::world::World;
+use crate::world::Scene;
 use itertools::Itertools;
 
 use super::{
@@ -30,13 +30,13 @@ pub struct ThreadPoolRenderer {
     // control_receiver: Arc<Mutex<Receiver<()>>>,
     parking: Arc<(Mutex<bool>, Condvar)>,
 
-    world: Arc<RwLock<World>>,
+    world: Arc<RwLock<Scene>>,
     is_started: bool,
     num_finished: u32,
 }
 
 impl ThreadPoolRenderer {
-    pub fn new(world: Arc<RwLock<World>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
+    pub fn new(scene: Arc<RwLock<Scene>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
         let (input_sender, input_receiver) = channel();
         let (output_sender, output_receiver) = channel();
         // let (control_sender, control_receiver) = channel();
@@ -51,7 +51,7 @@ impl ThreadPoolRenderer {
             // control_sender,
             // control_receiver: Arc::new(Mutex::new(control_receiver)),
             parking: Arc::new((Mutex::new(false), Condvar::new())),
-            world,
+            world: scene,
             is_started: false,
             num_finished: 0,
         };
@@ -80,9 +80,9 @@ impl Renderer for ThreadPoolRenderer {
         self.is_started = false;
     }
 
-    fn start_rendering(&mut self, camera: Arc<RwLock<Camera>>, samples_number: u32) {
-        let width = camera.read().unwrap().image().width;
-        let height = camera.read().unwrap().image().height;
+    fn start_rendering(&mut self, camera: Arc<RwLock<Camera>>, img_params: &ImageParams, samples_number: u32) {
+        let width = img_params.width;
+        let height = img_params.height;
         self.num_finished = 0;
 
         new_dispatcher_thread(

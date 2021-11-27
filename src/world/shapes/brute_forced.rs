@@ -1,4 +1,4 @@
-use super::{super::Material, Shape};
+use super::{super::Material, Shape, AABB};
 use crate::{
     algebra::{
         approx_equal, equation::solve_quadratic_equation, transform::InversableTransform, Vector3d,
@@ -18,15 +18,17 @@ struct BruteForcableShape {
 
 #[typetag::serde]
 impl Shape for BruteForcableShape {
-    fn ray_intersect<'a>(&'a self, ray: &'a Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
-        let origin = self.transform.inverse.transform_point(&ray.origin);
-        let dir = self.transform.inverse.transform_vector(&ray.direction);
+    fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+        // let origin = self.transform.inverse.transform_point(&ray.origin);
+        // let dir = self.transform.inverse.transform_vector(&ray.direction);
+        let origin = &ray.origin;
+        let dir = &ray.direction;
 
-        let (start, end) = self.shape.intersect_bound(&origin, &dir)?;
+        let (start, end) = self.shape.intersect_bound(origin, dir)?;
         let mut step = self.step;
 
         let mut t = start;
-        let mut p = &origin + t * &dir;
+        let mut p = origin + t * dir;
         let mut r = self.shape.shape_func(&p);
         'outer: for _ in 0..4 {
             loop {
@@ -34,7 +36,7 @@ impl Shape for BruteForcableShape {
                     return None;
                 }
                 t += step;
-                p += step * &dir;
+                p += step * dir;
 
                 let next = self.shape.shape_func(&p);
                 if approx_equal(next, 0.0) {
@@ -55,13 +57,15 @@ impl Shape for BruteForcableShape {
             return None;
         }
 
-        let p = &origin + &dir * t;
+        let p = origin + dir * t;
         let normal = self.shape.gradient(&p);
         let (u, v) = self.shape.uv(&p);
 
         Some(RayHit::new(
-            self.transform.direct.transform_point(&p),
-            self.transform.inverse.transform_normal(&normal),
+            // self.transform.direct.transform_point(&p),
+            // self.transform.inverse.transform_normal(&normal),
+            p,
+            normal,
             t,
             &self.material,
             ray,
@@ -73,6 +77,14 @@ impl Shape for BruteForcableShape {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn get_transform(&self) -> Option<&InversableTransform> {
+        Some(&self.transform)
+    }
+
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        self.shape.get_bounding_box()
+    }
 }
 
 #[typetag::serde(tag = "type")]
@@ -81,11 +93,13 @@ trait BruteForceShape: Debug + Send + Sync {
     fn intersect_bound(&self, origin: &Vector3d, dir: &Vector3d) -> Option<(f64, f64)>;
     fn gradient(&self, p: &Vector3d) -> Vector3d;
     fn uv(&self, p: &Vector3d) -> (f64, f64);
+    fn get_bounding_box(&self) -> Option<&AABB>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Heart {
     sphere_radius: f64,
+    bounding_box: AABB,
 }
 
 #[typetag::serde]
@@ -130,12 +144,21 @@ impl BruteForceShape for Heart {
     fn uv(&self, _p: &Vector3d) -> (f64, f64) {
         (0.0, 0.0)
     }
+
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        Some(&self.bounding_box)
+        // Some(&AABB{
+        //     min_p: Vector3d::new(-self.sphere_radius, -self.sphere_radius, -self.sphere_radius),
+        //     max_p: Vector3d::new(self.sphere_radius, self.sphere_radius, self.sphere_radius),
+        // })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Sine {
     a: f64,
     sphere_radius: f64,
+    bounding_box: AABB,
 }
 
 #[typetag::serde]
@@ -170,8 +193,12 @@ impl BruteForceShape for Sine {
         )
     }
 
-    fn uv(&self, p: &Vector3d) -> (f64, f64) {
+    fn uv(&self, _p: &Vector3d) -> (f64, f64) {
         (0.0, 0.0)
+    }
+
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        Some(&self.bounding_box)
     }
 }
 
@@ -179,6 +206,7 @@ impl BruteForceShape for Sine {
 struct Star {
     a: f64,
     sphere_radius: f64,
+    bounding_box: AABB,
 }
 
 #[typetag::serde]
@@ -211,18 +239,27 @@ impl BruteForceShape for Star {
         )
     }
 
-    fn uv(&self, p: &Vector3d) -> (f64, f64) {
+    fn uv(&self, _p: &Vector3d) -> (f64, f64) {
         (0.0, 0.0)
+    }
+
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        Some(&self.bounding_box)
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(
+    from = "serde_models::DupinCyclideJson",
+    into = "serde_models::DupinCyclideJson"
+)]
 struct DupinCyclide {
     a: f64,
     b: f64,
     c: f64,
     d: f64,
     sphere_radius: f64,
+    bounding_box: AABB,
 }
 
 #[typetag::serde]
@@ -244,15 +281,71 @@ impl BruteForceShape for DupinCyclide {
 
     fn gradient(&self, p: &Vector3d) -> Vector3d {
         let b2 = self.b * self.b;
-        let e = 4.0 * (p.x * p.x + p.y * p.y + p.z * p.z + b2 - self. d * self.d);
+        let e = 4.0 * (p.x * p.x + p.y * p.y + p.z * p.z + b2 - self.d * self.d);
         Vector3d {
             x: e * p.x - 8.0 * self.a * (self.a * p.x - self.c * self.d),
             y: e * p.y - 8.0 * b2 * p.y,
-            z: e * p.z
+            z: e * p.z,
         }
     }
 
     fn uv(&self, p: &Vector3d) -> (f64, f64) {
-        (0.0, 0.0)
+        (p.x, p.y)
+    }
+
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        Some(&self.bounding_box)
+    }
+}
+
+mod serde_models {
+    use super::DupinCyclide;
+    use crate::{algebra::Vector3d, world::shapes::AABB};
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub struct DupinCyclideJson {
+        a: f64,
+        b: f64,
+        c: f64,
+        d: f64,
+        sphere_radius: f64,
+    }
+
+    impl From<DupinCyclideJson> for DupinCyclide {
+        fn from(dupin: DupinCyclideJson) -> Self {
+            let bounding_box = AABB {
+                min_p: Vector3d::new(
+                    -dupin.sphere_radius,
+                    -dupin.sphere_radius,
+                    -dupin.sphere_radius,
+                ),
+                max_p: Vector3d::new(
+                    dupin.sphere_radius,
+                    dupin.sphere_radius,
+                    dupin.sphere_radius,
+                ),
+            };
+            DupinCyclide {
+                a: dupin.a,
+                b: dupin.b,
+                c: dupin.c,
+                d: dupin.d,
+                sphere_radius: dupin.sphere_radius,
+                bounding_box,
+            }
+        }
+    }
+
+    impl From<DupinCyclide> for DupinCyclideJson {
+        fn from(dupin: DupinCyclide) -> Self {
+            Self {
+                a: dupin.a,
+                b: dupin.b,
+                c: dupin.c,
+                d: dupin.d,
+                sphere_radius: dupin.sphere_radius
+            }
+        }
     }
 }

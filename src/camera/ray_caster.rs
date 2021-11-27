@@ -1,16 +1,20 @@
 use std::ops::Range;
 
 use itertools::Itertools;
-use rand::{Rng, prelude::ThreadRng};
+use rand::{prelude::ThreadRng, Rng};
 
-use crate::{algebra::Vector3d, world::Ray};
+use crate::{algebra::Vector3d, world::ray::Ray};
 
 use super::Camera;
 
+#[derive(Debug, Clone)]
+pub struct ImageParams {
+    pub width: u32,
+    pub height: u32,
+}
 
 #[derive(Debug)]
 pub struct MultisamplerRayCaster {
-    // camera: Arc<RwLock<Camera>>,
     camera_position: Vector3d,
     camera_right: Vector3d,
     camera_up: Vector3d,
@@ -23,14 +27,45 @@ pub struct MultisamplerRayCaster {
 }
 
 impl MultisamplerRayCaster {
-    pub fn new(camera: &Camera, samples_number: u32) -> Self {
+    pub fn new(camera: &Camera, img_params: &ImageParams, samples_number: u32) -> Self {
         let center = &camera.position + camera.focal_length * &camera.direction;
+        let aspect_ratio = img_params.width as f64 / img_params.height as f64;
+        let viewport_width = (camera.fov / 2.0).tan() * camera.focal_length * 2.0;
+        let viewport_height = viewport_width / aspect_ratio;
+        let coords_iter = (0..img_params.height).cartesian_product(0..img_params.width);
+        
         Self {
-            left_top: &camera.position + camera.focal_length * &camera.direction
-                - &camera.rigth * (camera.viewport_width / 2.0)
-                + &camera.up * (camera.viewport_height / 2.0),
-            coords_iter: (0..camera.image.height).cartesian_product(0..camera.image.width),
-            pixel_resolution: camera.viewport_width / camera.image.width as f64,
+            left_top: center - &camera.rigth * (viewport_width / 2.0)
+                + &camera.up * (viewport_height / 2.0),
+            coords_iter: coords_iter,
+            pixel_resolution: viewport_width / img_params.width as f64,
+            rng: rand::thread_rng(),
+            samples_number: samples_number,
+            camera_position: camera.position.clone(),
+            camera_right: camera.rigth.clone(),
+            camera_up: camera.up.clone(),
+        }
+    }
+
+    pub fn partial(
+        camera: &Camera,
+        whole_image: ImageParams,
+        from: (u32, u32),
+        partial_image: ImageParams,
+        samples_number: u32,
+    ) -> Self {
+        let center = &camera.position + camera.focal_length * &camera.direction;
+        let aspect_ratio = whole_image.width as f64 / whole_image.height as f64;
+        let viewport_width = (camera.fov / 2.0).tan() * camera.focal_length * 2.0;
+        let viewport_height = viewport_width / aspect_ratio;
+        let coords_iter =
+            (from.0..partial_image.height).cartesian_product(from.1..partial_image.width);
+
+        Self {
+            left_top: center - &camera.rigth * (viewport_width / 2.0)
+                + &camera.up * (viewport_height / 2.0),
+            coords_iter,
+            pixel_resolution: viewport_width / whole_image.width as f64,
             rng: rand::thread_rng(),
             samples_number: samples_number,
             camera_position: camera.position.clone(),
@@ -55,6 +90,11 @@ impl MultisamplerRayCaster {
             })
             .collect()
     }
+
+    /// Get a reference to the multisampler ray caster's pixel resolution.
+    pub fn pixel_resolution(&self) -> f64 {
+        self.pixel_resolution
+    }
 }
 
 impl Iterator for MultisamplerRayCaster {
@@ -76,7 +116,13 @@ impl Iterator for MultisamplerRayCaster {
 
         Some((x, y, samples))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.coords_iter.size_hint()
+    }
 }
+
+impl ExactSizeIterator for MultisamplerRayCaster {}
 
 pub struct SinglesamplerRayCaster<'a> {
     camera: &'a Camera,
@@ -86,15 +132,18 @@ pub struct SinglesamplerRayCaster<'a> {
 }
 
 impl<'a> SinglesamplerRayCaster<'a> {
-    pub fn new(camera: &'a Camera) -> Self {
+    pub fn new(camera: &'a Camera, img_params: ImageParams) -> Self {
         let center = &camera.position + camera.focal_length * &camera.direction;
+        let aspect_ratio = img_params.width as f64 / img_params.height as f64;
+        let viewport_width = (camera.fov / 2.0).tan() * camera.focal_length * 2.0;
+        let viewport_height = viewport_width / aspect_ratio;
         Self {
             camera: camera,
             left_bottom: center
-                - &camera.rigth * (camera.viewport_width / 2.0)
-                - &camera.up * (camera.viewport_height / 2.0),
-            coords_iter: (0..camera.image.height).cartesian_product(0..camera.image.width),
-            pixel_resolution: camera.viewport_width / camera.image.width as f64,
+                - &camera.rigth * (viewport_width / 2.0)
+                - &camera.up * (viewport_height / 2.0),
+            coords_iter: (0..img_params.height).cartesian_product(0..img_params.width),
+            pixel_resolution: viewport_width / img_params.width as f64,
         }
     }
 }

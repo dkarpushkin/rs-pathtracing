@@ -7,12 +7,12 @@ use log::error;
 use pixels::{Error, Pixels, SurfaceTexture};
 use ray_tracing::{
     algebra::Vector3d,
-    camera::{Camera, ImageParams},
+    camera::{Camera, ray_caster::ImageParams},
     renderer::{
         step_by_step::{self, ThreadPoolRenderer},
         thread_pool, threaded, Renderer,
     },
-    world::World,
+    world::Scene,
 };
 use winit::{
     dpi::LogicalSize,
@@ -59,7 +59,7 @@ fn main() -> Result<(), Error> {
     };
 
     let json_file = fs::read_to_string(world_file).expect("Something went wrong reading the file");
-    let world = World::from_json(&json_file).map_err(|err| {
+    let world = Scene::from_json(&json_file).map_err(|err| {
         error!("Loading world failed: {}", err);
         Error::UserDefined(Box::new(err))
     })?;
@@ -71,10 +71,6 @@ fn main() -> Result<(), Error> {
         // &Vector3d::new(-0.4755988783860254, 0.09950371902099893, -0.8740164282088437),
         &Vector3d::new(0.0, 1.0, 0.0),
         // &Vector3d::new(0.047559887838602544, 0.9950371902099893, 0.08740164282088438),
-        &ImageParams {
-            width: SIZE.0,
-            height: SIZE.1,
-        },
         1.0,
         (90.0 as f64).to_radians(),
     );
@@ -233,7 +229,7 @@ fn main() -> Result<(), Error> {
 
                     // let camera = shared_camera.read().unwrap();
                     let start = time::Instant::now();
-                    renderer.render_to(shared_camera.clone(), frame);
+                    renderer.render_to(shared_camera.clone(), ImageParams { width: SIZE.0, height: SIZE.1 }, frame);
                     // println!("Rendered for camera:\n{}", camera);
                     // println!(
                     //     "Camera vectors dots:\ndir to right: {}\ndir to up: {}\nup to right: {}",

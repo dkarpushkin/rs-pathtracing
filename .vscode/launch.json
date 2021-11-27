@@ -21,7 +21,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/main.exe",
-            "args": ["${workspaceFolder}/scenes/sine.json"],
+            "args": ["${workspaceFolder}/scenes/scene_with_camera.json"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

@@ -1,10 +1,9 @@
-use std::{fmt::Display, ops::Mul};
-
-use serde::{de, de::Visitor, Deserialize, Serialize};
-
 use super::Vector3d;
+use crate::world::ray::Ray;
+use serde::{de, de::Visitor, Deserialize, Serialize};
+use std::{f64::consts::PI, fmt::Display, ops::Mul};
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct InversableTransform {
     pub direct: Transform,
     pub inverse: Transform,
@@ -18,6 +17,85 @@ impl InversableTransform {
             * Transform::rotate(Vector3d::new(-rotate.x, -rotate.y, -rotate.z))
             * Transform::translate(Vector3d::new(-translate.x, -translate.y, -translate.z));
         Self { direct, inverse }
+    }
+
+    pub fn direct_transform_ray(&self, ray: &Ray) -> Ray {
+        Ray {
+            origin: self.direct.transform_point(&ray.origin),
+            direction: self.direct.transform_vector(&ray.direction),
+        }
+    }
+
+    pub fn inverse_transform_ray(&self, ray: &Ray) -> Ray {
+        Ray {
+            origin: self.inverse.transform_point(&ray.origin),
+            direction: self.inverse.transform_vector(&ray.direction),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct InversableTransformJson {
+    translate: Vector3d,
+    rotate: Vector3d,
+    scale: Vector3d,
+}
+
+impl From<InversableTransformJson> for InversableTransform {
+    fn from(transform: InversableTransformJson) -> Self {
+        Self::new(transform.translate, transform.rotate, transform.scale)
+    }
+}
+
+impl From<InversableTransform> for InversableTransformJson {
+    fn from(transform: InversableTransform) -> Self {
+        let mat = &transform.direct.0;
+        let translate = Vector3d::new(mat[0][3], mat[1][3], mat[2][3]);
+        let scale = Vector3d::new(
+            mat[0][0] * mat[0][0] + mat[1][0] * mat[1][0] + mat[2][0] * mat[2][0],
+            mat[0][1] * mat[0][1] + mat[1][1] * mat[1][1] + mat[2][1] * mat[2][1],
+            mat[0][2] * mat[0][2] + mat[1][2] * mat[1][2] + mat[2][2] * mat[2][2],
+        );
+        let rotate_mat = Transform([
+            [
+                mat[0][0] / scale.x,
+                mat[0][1] / scale.y,
+                mat[0][2] / scale.z,
+                0.0,
+            ],
+            [
+                mat[1][0] / scale.x,
+                mat[1][1] / scale.y,
+                mat[1][2] / scale.z,
+                0.0,
+            ],
+            [
+                mat[2][0] / scale.x,
+                mat[2][1] / scale.y,
+                mat[2][2] / scale.z,
+                0.0,
+            ],
+            [0.0, 0.0, 0.0, 1.0],
+        ]);
+        let v1 = Vector3d::new(1.0, 1.0, 1.0);
+        let v2 = rotate_mat.transform_vector(&v1);
+        let x_rotate_cos = (v1.y * v2.y + v1.z * v2.z)
+            / ((v1.y * v1.y + v1.z * v1.z) * (v2.y * v2.y + v2.z * v2.z));
+        let y_rotate_cos = (v1.x * v2.x + v1.z * v2.z)
+            / ((v1.x * v1.x + v1.z * v1.z) * (v2.x * v2.x + v2.z * v2.z));
+        let z_rotate_cos = (v1.x * v2.x + v1.y * v2.y)
+            / ((v1.x * v1.x + v1.y * v1.y) * (v2.x * v2.x + v2.y * v2.y));
+        let rotate = Vector3d::new(
+            x_rotate_cos.acos(),
+            y_rotate_cos.acos(),
+            z_rotate_cos.acos(),
+        );
+
+        Self {
+            translate,
+            rotate,
+            scale,
+        }
     }
 }
 
@@ -90,7 +168,7 @@ impl<'de> Deserialize<'de> for InversableTransform {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Transform(pub [[f64; 4]; 4]);
 
 impl<'de> Deserialize<'de> for Transform {
@@ -322,6 +400,72 @@ impl Transform {
             z: normal.x * self.0[0][2] + normal.y * self.0[1][2] + normal.z * self.0[2][2],
         }
     }
+
+    fn decompose(&self) -> InversableTransformJson {
+        let mat = &self.0;
+        let translate = Vector3d::new(mat[0][3], mat[1][3], mat[2][3]);
+        let scale = Vector3d::new(
+            Vector3d::new(mat[0][0], mat[1][0], mat[2][0]).length(),
+            Vector3d::new(mat[0][1], mat[1][1], mat[2][1]).length(),
+            Vector3d::new(mat[0][2], mat[1][2], mat[2][2]).length(),
+        );
+        let rotate_mat = Transform([
+            [
+                mat[0][0] / scale.x,
+                mat[0][1] / scale.y,
+                mat[0][2] / scale.z,
+                0.0,
+            ],
+            [
+                mat[1][0] / scale.x,
+                mat[1][1] / scale.y,
+                mat[1][2] / scale.z,
+                0.0,
+            ],
+            [
+                mat[2][0] / scale.x,
+                mat[2][1] / scale.y,
+                mat[2][2] / scale.z,
+                0.0,
+            ],
+            [0.0, 0.0, 0.0, 1.0],
+        ]);
+
+        let r = &rotate_mat.0;
+        let y_rotate = (-r[2][0]).atan2((r[0][0] * r[0][0] + r[1][0] * r[1][0]).sqrt());
+        let x_rotate = (r[2][1] / y_rotate.cos()).atan2(r[2][2] / y_rotate.cos());
+        let z_rotate = (r[1][0] / y_rotate.cos()).atan2(r[0][0] / y_rotate.cos());
+        let rotate = Vector3d::new(
+            x_rotate.to_degrees(),
+            y_rotate.to_degrees(),
+            z_rotate.to_degrees(),
+        );
+
+        // let v1 = Vector3d::new(1.0, 1.0, 1.0);
+        // let v2 = rotate_mat.transform_vector(&v1);
+        // let x_rotate_cos = (v2.y + v2.z) / 2.0;
+        // let y_rotate_cos = (v2.x + v2.z) / 2.0;
+        // let z_rotate_cos = (v2.x + v2.y) / 2.0;
+
+        // let yz = rotate_mat.transform_vector(&Vector3d::new(0.0, 1.0, 1.0));
+        // let xz = rotate_mat.transform_vector(&Vector3d::new(1.0, 0.0, 1.0));
+        // let xy = rotate_mat.transform_vector(&Vector3d::new(1.0, 1.0, 0.0));
+        // let x_rotate_cos = (yz.y + yz.z) / 2.0;
+        // let y_rotate_cos = (xz.x + xz.z) / 2.0;
+        // let z_rotate_cos = (xy.x + xy.y) / 2.0;
+
+        // let rotate = Vector3d::new(
+        //     x_rotate_cos.acos().to_degrees(),
+        //     y_rotate_cos.acos().to_degrees(),
+        //     (z_rotate_cos.acos() + PI).to_degrees(),
+        // );
+
+        InversableTransformJson {
+            translate,
+            rotate,
+            scale,
+        }
+    }
 }
 
 impl Display for Transform {
@@ -460,7 +604,9 @@ impl Mul<&Transform> for &Transform {
 
 #[cfg(test)]
 mod tests {
-    use crate::algebra::approx_equal;
+    use rand::{thread_rng, Rng};
+
+    use crate::algebra::{approx_equal, approx_equal_scaled};
 
     use super::{Transform, Vector3d};
 
@@ -513,14 +659,23 @@ mod tests {
         assert_eq!(m3.0[2][3], 1080.0);
     }
 
-    // #[test]
-    // fn test_matrix_vector_multiplication() {
-    //     let m1 = Transform([
-    //         [1.0, 2.0, 3.0, 4.0],
-    //         [5.0, 6.0, 7.0, 8.0],
-    //         [9.0, 10.0, 11.0, 12.0],
-    //         [13.0, 14.0, 15.0, 16.0],
-    //     ]);
-    //     let v = Vector3d::new(17.0, 18.0, 19.0);
-    // }
+    #[test]
+    fn test_matrix_decomposition() {
+        let mut rng = thread_rng();
+        let translate = Vector3d::new(23.0, 54.0, 39.0);
+        let rotate = Vector3d::new(
+            rng.gen_range(-90.0..90.0),
+            rng.gen_range(-90.0..90.0),
+            rng.gen_range(-90.0..90.0),
+        );
+        let scale = Vector3d::new(1.2, 3.4, 5.6);
+        let mat =
+            Transform::translate(translate) * Transform::rotate(rotate) * Transform::scale(scale);
+
+        let decomposed = mat.decompose();
+
+        assert!(approx_equal_scaled(decomposed.rotate.x, rotate.x, 1e-10));
+        assert!(approx_equal_scaled(decomposed.rotate.y, rotate.y, 1e-10));
+        assert!(approx_equal_scaled(decomposed.rotate.z, rotate.z, 1e-10));
+    }
 }

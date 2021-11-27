@@ -1,15 +1,18 @@
-use std::{fmt::Display, iter::Sum, ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub}};
+use std::{fmt::Display, iter::Sum, ops::{Add, AddAssign, Div, Index, Mul, MulAssign, Neg, Sub}};
 
-use num::Float;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-pub mod transform;
 pub mod equation;
 pub mod noise;
+pub mod transform;
 
 pub fn approx_equal(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-15
+}
+
+pub fn approx_equal_scaled(a: f64, b: f64, epsilon: f64) -> bool {
+    (a - b).abs() < epsilon
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
@@ -108,6 +111,14 @@ impl Vector3d {
         }
     }
 
+    pub fn divide(&self, other: &Vector3d) -> Vector3d {
+        Vector3d {
+            x: self.x / other.x,
+            y: self.y / other.y,
+            z: self.z / other.z,
+        }
+    }
+
     pub fn powi(&self, n: i32) -> Vector3d {
         Vector3d::new(self.x.powi(n), self.y.powi(n), self.z.powi(n))
     }
@@ -120,8 +131,32 @@ impl Vector3d {
         Vector3d {
             x: self.x.fract(),
             y: self.y.fract(),
-            z: self.z.fract()
+            z: self.z.fract(),
         }
+    }
+
+    pub fn min(&self, other: &Vector3d) -> Vector3d {
+        Vector3d {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+            z: self.z.min(other.z),
+        }
+    }
+
+    pub fn max(&self, other: &Vector3d) -> Vector3d {
+        Vector3d {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+            z: self.z.max(other.z),
+        }
+    }
+
+    pub fn min_component(&self) -> f64 {
+        self.x.min(self.y).min(self.z)
+    }
+
+    pub fn max_component(&self) -> f64 {
+        self.x.max(self.y).max(self.z)
     }
 }
 
@@ -354,7 +389,7 @@ impl Div<Vector3d> for Vector3d {
         Vector3d {
             x: self.x / rhs.x,
             y: self.y / rhs.y,
-            z: self.z / rhs.z
+            z: self.z / rhs.z,
         }
     }
 }
@@ -366,7 +401,7 @@ impl Div<&Vector3d> for Vector3d {
         Vector3d {
             x: self.x / rhs.x,
             y: self.y / rhs.y,
-            z: self.z / rhs.z
+            z: self.z / rhs.z,
         }
     }
 }
@@ -378,7 +413,7 @@ impl Div<Vector3d> for &Vector3d {
         Vector3d {
             x: self.x / rhs.x,
             y: self.y / rhs.y,
-            z: self.z / rhs.z
+            z: self.z / rhs.z,
         }
     }
 }
@@ -390,7 +425,7 @@ impl Div<&Vector3d> for &Vector3d {
         Vector3d {
             x: self.x / rhs.x,
             y: self.y / rhs.y,
-            z: self.z / rhs.z
+            z: self.z / rhs.z,
         }
     }
 }
@@ -460,5 +495,18 @@ impl<'a> Sum<&'a Vector3d> for Vector3d {
             acc += e;
         }
         acc
+    }
+}
+
+impl Index<usize> for Vector3d {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => panic!("Vector3d out of index")
+        }
     }
 }

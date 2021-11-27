@@ -20,8 +20,11 @@ impl Scatter {
 
 #[typetag::serde(tag = "type", content = "material")]
 pub trait Material: Debug + Send + Sync {
-    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter>;
-    fn emitted(&self, u: f64, v: f64, p: &Vector3d) -> Vector3d {
+    fn scatter(&self, _ray: &Ray, _ray_hit: &RayHit) -> Option<Scatter> {
+        None
+    }
+
+    fn emitted(&self, _u: f64, _v: f64, _p: &Vector3d) -> Vector3d {
         Vector3d::new(0.0, 0.0, 0.0)
     }
 }
@@ -34,10 +37,10 @@ pub struct Lambertian {
 #[typetag::serde]
 impl Material for Lambertian {
     fn scatter(&self, _ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
-        let mut direction = &ray_hit.normal + Vector3d::random_unit();
+        let mut direction = ray_hit.normal() + Vector3d::random_unit();
         // let direction = &ray_hit.normal + Vector3d::random_in_hemisphere(&ray_hit.normal);
         if direction.is_zero() {
-            direction = ray_hit.normal.clone()
+            direction = ray_hit.normal().clone()
         }
 
         Some(Scatter::new(
@@ -56,7 +59,7 @@ pub struct Metal {
 #[typetag::serde]
 impl Material for Metal {
     fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
-        let reflected = ray.direction.reflect(&ray_hit.normal);
+        let reflected = ray.direction.reflect(ray_hit.normal());
         let direction = if self.fuzz == 0.0 {
             reflected
         } else {
@@ -91,15 +94,15 @@ impl Material for Dielectric {
             self.index_of_refraction
         };
 
-        let cos_theta = -&ray.direction * &ray_hit.normal;
+        let cos_theta = -&ray.direction * ray_hit.normal();
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
         let direction = if refract_ratio * sin_theta > 1.0
             || Dielectric::reflectance(cos_theta, refract_ratio) > rand::thread_rng().gen()
         {
-            ray.direction.reflect(&ray_hit.normal)
+            ray.direction.reflect(ray_hit.normal())
         } else {
-            ray.direction.refract(&ray_hit.normal, refract_ratio)
+            ray.direction.refract(ray_hit.normal(), refract_ratio)
         };
 
         Some(Scatter::new(
@@ -116,10 +119,6 @@ pub struct DiffuseLight {
 
 #[typetag::serde]
 impl Material for DiffuseLight {
-    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
-        None
-    }
-
     fn emitted(&self, u: f64, v: f64, p: &Vector3d) -> Vector3d {
         self.emit.value(u, v, p)
     }
@@ -129,12 +128,4 @@ impl Material for DiffuseLight {
 pub struct EmptyMaterial;
 
 #[typetag::serde]
-impl Material for EmptyMaterial {
-    fn scatter(&self, ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
-        // Scatter::new(
-        //     Ray::new(ray_hit.point.clone(), ray_hit.normal.clone()),
-        //     Vector3d::new(1.0, 1.0, 1.0),
-        // )
-        None
-    }
-}
+impl Material for EmptyMaterial {}

@@ -1,0 +1,229 @@
+{
+    "world": {
+        "name": "World",
+        "shapes": [
+            {
+                "type": "Sphere",
+                "name": "Sphere1",
+                "radius": 0.3,
+                "tube_radius": 0.2,
+                "transform": {
+                    "translate": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "rotate": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "scale": [
+                        2,
+                        2,
+                        2
+                    ]
+                },
+                "material": {
+                    "type": "Lambertian",
+                    "material": {
+                        "albedo": {
+                            "type": "UVChecker",
+                            "scale": 4.0,
+                            "odd": {
+                                "type": "SolidColor",
+                                "color": {
+                                    "x": 0.1,
+                                    "y": 0.9,
+                                    "z": 0.9
+                                }
+                            },
+                            "even": {
+                                "type": "SolidColor",
+                                "color": {
+                                    "x": 0.9,
+                                    "y": 0.1,
+                                    "z": 0.9
+                                }
+                            },
+                            "multipliers": [
+                                40.0,
+                                40.0
+                            ]
+                        },
+                        "fuzz": 0.0,
+                        "index_of_refraction": 1.4
+                    }
+                }
+            },
+            {
+                "type": "BruteForcableShape",
+                "name": "Dupin",
+                "shape": {
+                    "type": "DupinCyclide",
+                    "a": 1.11,
+                    "b": 0.99,
+                    "c": 0.5,
+                    "d": 0.1,
+                    "sphere_radius": 1.6
+                },
+                "step": 0.01,
+                "transform": {
+                    "translate": [
+                        -6.0,
+                        0.0,
+                        0.0
+                    ],
+                    "rotate": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "scale": [
+                        2,
+                        2,
+                        2
+                    ]
+                },
+                "material": {
+                    "type": "Lambertian",
+                    "material": {
+                        "albedo": {
+                            "type": "UVChecker",
+                            "scale": 4.0,
+                            "odd": {
+                                "type": "SolidColor",
+                                "color": {
+                                    "x": 0.1,
+                                    "y": 0.9,
+                                    "z": 0.9
+                                }
+                            },
+                            "even": {
+                                "type": "SolidColor",
+                                "color": {
+                                    "x": 0.9,
+                                    "y": 0.1,
+                                    "z": 0.9
+                                }
+                            },
+                            "multipliers": [
+                                40.0,
+                                40.0
+                            ]
+                        },
+                        "fuzz": 0.0,
+                        "index_of_refraction": 1.4
+                    }
+                }
+            },
+            {
+                "type": "Sphere",
+                "name": "Ground",
+                "transform": {
+                    "translate": {
+                        "x": 0.0,
+                        "y": -1002.0,
+                        "z": 0.0
+                    },
+                    "rotate": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 1000,
+                        "y": 1000,
+                        "z": 1000
+                    }
+                },
+                "material": {
+                    "type": "Metal",
+                    "material": {
+                        "albedo": {
+                            "type": "CheckerTexture",
+                            "scale": 4.0,
+                            "odd": {
+                                "type": "SolidColor",
+                                "color": {
+                                    "x": 0.1,
+                                    "y": 0.2,
+                                    "z": 0.8
+                                }
+                            },
+                            "even": {
+                                "type": "SolidColor",
+                                "color": {
+                                    "x": 0.9,
+                                    "y": 0.2,
+                                    "z": 0.1
+                                }
+                            },
+                            "multipliers": {
+                                "x": 10.0,
+                                "y": 10.0,
+                                "z": 10.0
+                            }
+                        },
+                        "fuzz": 0.0,
+                        "index_of_refraction": 1.5
+                    }
+                }
+            }
+        ]
+    },
+    "camera": {
+        "position": [
+            -18.77880374684613,
+            6.489362001506077,
+            -15.535177518688768
+        ],
+        "direction": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "up": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "fov": 45.0,
+        "focal_length": 1.0
+    },
+    "materials": [
+        {
+            "name": "Ground",
+            "type": "Metal",
+            "material": {
+                "albedo": {
+                    "type": "CheckerTexture",
+                    "scale": 4.0,
+                    "odd": {
+                        "type": "SolidColor",
+                        "color": {
+                            "x": 0.1,
+                            "y": 0.2,
+                            "z": 0.8
+                        }
+                    },
+                    "even": {
+                        "type": "SolidColor",
+                        "color": {
+                            "x": 0.9,
+                            "y": 0.2,
+                            "z": 0.1
+                        }
+                    },
+                    "multipliers": {
+                        "x": 10.0,
+                        "y": 10.0,
+                        "z": 10.0
+                    }
+                },
+                "fuzz": 0.0,
+                "index_of_refraction": 1.5
+            }
+        }
+    ]
+}
