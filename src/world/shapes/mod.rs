@@ -8,7 +8,7 @@ use crate::algebra::{
 use itertools::Itertools;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::{any::Any, cmp::Ordering, f64::consts::PI, fmt::Debug, str::FromStr};
+use std::{any::Any, cmp::Ordering, f64::consts::PI, fmt::Debug, str::FromStr, sync::Arc};
 
 pub mod brute_forced;
 
@@ -50,7 +50,6 @@ impl AABB {
     }
 }
 
-#[typetag::serde(tag = "type")]
 pub trait Shape: Debug + Send + Sync {
     fn ray_hit_bounded<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
         if let Some(bound) = self.get_bounding_box() {
@@ -91,16 +90,14 @@ pub trait Shape: Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct Sphere {
     name: String,
     transform: InversableTransform,
-    material: Box<dyn Material>,
-    #[serde(default)]
+    material: Arc<Box<dyn Material>>,
     aabb: AABB,
 }
 
-#[typetag::serde]
 impl Shape for Sphere {
     fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
         let origin = &ray.origin;
@@ -161,7 +158,7 @@ impl Shape for Sphere {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 struct Torus {
     name: String,
     radius: f64,
@@ -170,7 +167,6 @@ struct Torus {
     material: Box<dyn Material>,
 }
 
-#[typetag::serde]
 impl Shape for Torus {
     fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
         let origin = &ray.origin;
@@ -229,14 +225,13 @@ impl Shape for Torus {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 struct Tooth {
     name: String,
     transform: InversableTransform,
     material: Box<dyn Material>,
 }
 
-#[typetag::serde]
 impl Shape for Tooth {
     fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
         // let o = self.transform.inverse.transform_point(&ray.origin);
@@ -294,13 +289,12 @@ impl Shape for Tooth {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct ShapeCollection {
     name: String,
     shapes: Vec<Box<dyn Shape>>,
 }
 
-#[typetag::serde]
 impl Shape for ShapeCollection {
     fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
         self.shapes
@@ -323,8 +317,8 @@ impl Shape for ShapeCollection {
 }
 
 impl ShapeCollection {
-    pub fn new(name: String, shapes: Vec<Box<dyn Shape>>) -> Self {
-        Self { name, shapes }
+    pub fn new(name: &str, shapes: Vec<Box<dyn Shape>>) -> Self {
+        Self { name: name.into(), shapes }
     }
 
     pub fn ad_random_spheres(&mut self, amount: u32) {
@@ -385,7 +379,7 @@ impl ShapeCollection {
             };
 
             let shape = Sphere {
-                material: mat,
+                material: Arc::new(mat),
                 transform: InversableTransform::new(
                     pos,
                     Vector3d::new(0.0, 0.0, 0.0),
@@ -399,35 +393,37 @@ impl ShapeCollection {
     }
 }
 
-// pub mod json_models {
-//     use super::{material::Material, Shape, Sphere, AABB};
-//     use crate::algebra::transform::InversableTransform;
-//     use serde::{Deserialize, Serialize};
-//     use std::{collections::HashMap, fmt::Debug};
+pub mod json_models {
+    use super::{material::Material, Shape, Sphere, AABB};
+    use crate::algebra::transform::InversableTransform;
+    use serde::{Deserialize, Serialize};
+    use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
-//     pub trait ShapeJson: Debug + Serialize {
-//         fn make_shape(&self, materials: HashMap<String, Box<dyn Material>>) -> Box<dyn Shape>;
-//     }
+    #[typetag::serde(tag = "type")]
+    pub trait ShapeJson: Debug {
+        fn make_shape(&self, materials: &HashMap<String, Arc<Box<dyn Material>>>) -> Box<dyn Shape>;
+    }
 
-//     #[derive(Serialize, Deserialize, Debug)]
-//     struct SphereJson {
-//         transform: InversableTransform,
-//         name: String,
-//         material_name: String,
-//     }
+    #[derive(Serialize, Deserialize, Debug)]
+    struct SphereJson {
+        transform: InversableTransform,
+        name: String,
+        material_name: String,
+    }
 
-//     impl ShapeJson for SphereJson {
-//         fn make_shape(&self, materials: HashMap<String, Box<dyn Material>>) -> Box<dyn Shape> {
-//             let aabb = AABB::default();
-//             Box::new(Sphere {
-//                 name: self.name.clone(),
-//                 transform: self.transform.clone(),
-//                 material: materials[&self.material_name],
-//                 aabb: aabb,
-//             })
-//         }
-//     }
-// }
+    #[typetag::serde]
+    impl ShapeJson for SphereJson {
+        fn make_shape(&self, materials: &HashMap<String, Arc<Box<dyn Material>>>) -> Box<dyn Shape> {
+            let aabb = AABB::default();
+            Box::new(Sphere {
+                name: self.name.clone(),
+                transform: self.transform.clone(),
+                material: materials[&self.material_name].clone(),
+                aabb: aabb,
+            })
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

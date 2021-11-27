@@ -8,7 +8,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 struct BruteForcableShape {
     transform: InversableTransform,
     material: Box<dyn Material>,
@@ -16,7 +16,6 @@ struct BruteForcableShape {
     step: f64,
 }
 
-#[typetag::serde]
 impl Shape for BruteForcableShape {
     fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
         // let origin = self.transform.inverse.transform_point(&ray.origin);
