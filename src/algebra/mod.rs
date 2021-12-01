@@ -7,6 +7,7 @@ pub mod equation;
 pub mod noise;
 pub mod transform;
 
+#[inline]
 pub fn approx_equal(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-15
 }
@@ -148,6 +149,14 @@ impl Vector3d {
             x: self.x.max(other.x),
             y: self.y.max(other.y),
             z: self.z.max(other.z),
+        }
+    }
+
+    pub fn abs(&self) -> Vector3d {
+        Vector3d {
+            x: self.x.abs(),
+            y: self.y.abs(),
+            z: self.z.abs(),
         }
     }
 

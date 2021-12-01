@@ -1,0 +1,277 @@
+{
+    "background": [0.0, 0.0, 0.0],
+    "shapes": [
+        {
+            "type": "Rectangle",
+            "x0": -0.5,
+            "y0": -0.5,
+            "x1": 0.5,
+            "y1": 0.5,
+            "k": 0.0,
+            "transform": {
+                "translate": [
+                    10.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    90.0,
+                    0.0
+                ],
+                "scale": [
+                    2,
+                    2,
+                    2
+                ]
+            },
+            "material": "Sun"
+        },
+        {
+            "type": "Sphere",
+            "name": "Sphere1",
+            "radius": 0.3,
+            "tube_radius": 0.2,
+            "transform": {
+                "translate": [
+                    4.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    2,
+                    2,
+                    2
+                ]
+            },
+            "material": "Metal01"
+        },
+        {
+            "type": "BruteForsableShape",
+            "name": "HuntsSurface",
+            "shape": {
+                "type": "Cushion",
+                "sphere_radius": 1.5
+            },
+            "step": 0.01,
+            "transform": {
+                "translate": [
+                    -4.0,
+                    2.5,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    -90.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "Metal01"
+        },
+        {
+            "type": "Sphere",
+            "name": "Ground",
+            "transform": {
+                "translate": {
+                    "x": 0.0,
+                    "y": -1002.0,
+                    "z": 0.0
+                },
+                "rotate": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1000,
+                    "y": 1000,
+                    "z": 1000
+                }
+            },
+            "material": "Ground"
+        },
+        {
+            "type": "Sphere",
+            "name": "Sun",
+            "transform": {
+                "translate": {
+                    "x": 0.0,
+                    "y": 147600000000.0,
+                    "z": 0.0
+                },
+                "rotate": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 700000000,
+                    "y": 700000000,
+                    "z": 700000000
+                }
+            },
+            "material": "Sun"
+        }
+    ],
+    "camera": {
+        "position": [
+            -18.77880374684613,
+            6.489362001506077,
+            -15.535177518688768
+        ],
+        "direction": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "up": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "fov": 45.0,
+        "focal_length": 1.0
+    },
+    "materials": {
+        "Ground": {
+            "type": "Metal",
+            "albedo": {
+                "type": "CheckerTexture",
+                "scale": 4.0,
+                "odd": {
+                    "type": "SolidColor",
+                    "color": {
+                        "x": 0.1,
+                        "y": 0.2,
+                        "z": 0.8
+                    }
+                },
+                "even": {
+                    "type": "SolidColor",
+                    "color": {
+                        "x": 0.9,
+                        "y": 0.2,
+                        "z": 0.1
+                    }
+                },
+                "multipliers": {
+                    "x": 5.0,
+                    "y": 5.0,
+                    "z": 5.0
+                }
+            },
+            "fuzz": 0.0
+        },
+        "Lambertian01": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "UVChecker",
+                "scale": 4.0,
+                "odd": {
+                    "type": "SolidColor",
+                    "color": {
+                        "x": 0.1,
+                        "y": 0.9,
+                        "z": 0.9
+                    }
+                },
+                "even": {
+                    "type": "SolidColor",
+                    "color": {
+                        "x": 0.9,
+                        "y": 0.1,
+                        "z": 0.9
+                    }
+                },
+                "multipliers": [
+                    40.0,
+                    40.0
+                ]
+            }
+        },
+        "Lambertian02": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "UVChecker",
+                "scale": 4.0,
+                "odd": {
+                    "type": "SolidColor",
+                    "color": {
+                        "x": 0.1,
+                        "y": 0.9,
+                        "z": 0.9
+                    }
+                },
+                "even": {
+                    "type": "SolidColor",
+                    "color": {
+                        "x": 0.9,
+                        "y": 0.1,
+                        "z": 0.9
+                    }
+                },
+                "multipliers": [
+                    40.0,
+                    40.0
+                ]
+            }
+        },
+        "Metal01": {
+            "type": "Metal",
+            "albedo": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 0.9,
+                    "y": 0.1,
+                    "z": 0.9
+                }
+            },
+            "fuzz": 1.0
+        },
+        "WhiteMirror": {
+            "type": "Metal",
+            "albedo": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 0.99,
+                    "y": 0.99,
+                    "z": 0.99
+                }
+            },
+            "fuzz": 0.01
+        },
+        "Glass": {
+            "type": "Dielectric",
+            "index_of_refraction": 1.4
+        },
+        "Sun": {
+            "type": "DiffuseLight",
+            "emit": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 100,
+                    "y": 100,
+                    "z": 100
+                }
+            }
+        },
+        "EarthMap": {
+            "type": "Metal",
+            "albedo": {
+                "type": "ImageTexture",
+                "image_filename": "./scenes/textures/earthmap.jpg"
+            },
+            "fuzz": 1
+        }
+    }
+}

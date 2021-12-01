@@ -330,10 +330,10 @@ impl RendererState {
             self.is_redraw = true;
         }
 
-        if input.key_pressed(VirtualKeyCode::R) {
-            let json = self.shared_world.read().unwrap().to_json();
-            fs::write("saved_world.json", json).expect("Could not save world file");
-        }
+        // if input.key_pressed(VirtualKeyCode::R) {
+        //     let json = self.shared_world.read().unwrap().to_json();
+        //     fs::write("saved_world.json", json).expect("Could not save world file");
+        // }
 
         if input.key_pressed(VirtualKeyCode::Space) {
             if self.is_high_sampling {

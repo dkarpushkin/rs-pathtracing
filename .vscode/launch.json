@@ -21,7 +21,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/main.exe",
-            "args": ["${workspaceFolder}/scenes/scene_with_camera.json"],
+            "args": ["${workspaceFolder}/scenes/cube_test.json"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

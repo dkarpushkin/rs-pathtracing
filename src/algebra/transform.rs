@@ -1,10 +1,13 @@
 use super::Vector3d;
 use crate::world::ray::Ray;
 use serde::{de, de::Visitor, Deserialize, Serialize};
-use std::{f64::consts::PI, fmt::Display, ops::Mul};
+use std::{fmt::Display, ops::Mul};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct InversableTransform {
+    translate: Vector3d,
+    rotate: Vector3d,
+    scale: Vector3d,
     pub direct: Transform,
     pub inverse: Transform,
 }
@@ -14,9 +17,9 @@ impl InversableTransform {
         let direct =
             Transform::translate(translate) * Transform::rotate(rotate) * Transform::scale(scale);
         let inverse = Transform::scale(Vector3d::new(1.0 / scale.x, 1.0 / scale.y, 1.0 / scale.z))
-            * Transform::rotate(Vector3d::new(-rotate.x, -rotate.y, -rotate.z))
+            * Transform::rotate_inverse(Vector3d::new(-rotate.x, -rotate.y, -rotate.z))
             * Transform::translate(Vector3d::new(-translate.x, -translate.y, -translate.z));
-        Self { direct, inverse }
+        Self { translate, rotate, scale, direct, inverse }
     }
 
     pub fn direct_transform_ray(&self, ray: &Ray) -> Ray {
@@ -31,6 +34,21 @@ impl InversableTransform {
             origin: self.inverse.transform_point(&ray.origin),
             direction: self.inverse.transform_vector(&ray.direction),
         }
+    }
+
+    /// Get a reference to the inversable transform's translate.
+    pub fn translate(&self) -> Vector3d {
+        self.translate
+    }
+
+    /// Get a reference to the inversable transform's rotate.
+    pub fn rotate(&self) -> Vector3d {
+        self.rotate
+    }
+
+    /// Get a reference to the inversable transform's scale.
+    pub fn scale(&self) -> Vector3d {
+        self.scale
     }
 }
 
@@ -314,28 +332,33 @@ impl Transform {
     }
 
     pub fn rotate(vec: Vector3d) -> Transform {
-        let vec = Vector3d::new(vec.x.to_radians(), vec.y.to_radians(), vec.z.to_radians());
-        Transform([
-            [
-                vec.z.cos() * vec.y.cos(),
-                vec.z.cos() * vec.y.sin() * vec.x.sin() - vec.z.sin() * vec.x.cos(),
-                vec.z.cos() * vec.y.sin() * vec.x.cos() + vec.z.sin() * vec.x.sin(),
-                0.0,
-            ],
-            [
-                vec.z.sin() * vec.y.cos(),
-                vec.z.sin() * vec.y.sin() * vec.x.sin() + vec.z.cos() * vec.x.cos(),
-                vec.z.sin() * vec.y.sin() * vec.x.cos() - vec.z.cos() * vec.x.sin(),
-                0.0,
-            ],
-            [
-                -vec.y.sin(),
-                vec.y.cos() * vec.x.sin(),
-                vec.y.cos() * vec.x.cos(),
-                0.0,
-            ],
-            [0.0, 0.0, 0.0, 1.0],
-        ])
+        // let vec = Vector3d::new(vec.x.to_radians(), vec.y.to_radians(), vec.z.to_radians());
+        // Transform([
+        //     [
+        //         vec.z.cos() * vec.y.cos(),
+        //         vec.z.cos() * vec.y.sin() * vec.x.sin() - vec.z.sin() * vec.x.cos(),
+        //         vec.z.cos() * vec.y.sin() * vec.x.cos() + vec.z.sin() * vec.x.sin(),
+        //         0.0,
+        //     ],
+        //     [
+        //         vec.z.sin() * vec.y.cos(),
+        //         vec.z.sin() * vec.y.sin() * vec.x.sin() + vec.z.cos() * vec.x.cos(),
+        //         vec.z.sin() * vec.y.sin() * vec.x.cos() - vec.z.cos() * vec.x.sin(),
+        //         0.0,
+        //     ],
+        //     [
+        //         -vec.y.sin(),
+        //         vec.y.cos() * vec.x.sin(),
+        //         vec.y.cos() * vec.x.cos(),
+        //         0.0,
+        //     ],
+        //     [0.0, 0.0, 0.0, 1.0],
+        // ])
+        Transform::rotate_roll(vec.x) * Transform::rotate_pitch(vec.y) * Transform::rotate_yaw(vec.z)
+    }
+
+    pub fn rotate_inverse(vec: Vector3d) -> Transform {
+        Transform::rotate_yaw(vec.z) * Transform::rotate_pitch(vec.y) * Transform::rotate_roll(vec.x)
     }
 
     pub fn rotate_roll(degrees: f64) -> Transform {
@@ -401,6 +424,7 @@ impl Transform {
         }
     }
 
+    #[allow(dead_code)]
     fn decompose(&self) -> InversableTransformJson {
         let mat = &self.0;
         let translate = Vector3d::new(mat[0][3], mat[1][3], mat[2][3]);
@@ -628,6 +652,13 @@ mod tests {
         println!("{:?}; len = {}", v1, &v1 * &v1);
         let mat = Transform::rotate(Vector3d::new(0.0, -90.0, 0.0));
         let v1 = mat * &v;
+        println!("{:?}; len = {}", v1, &v1 * &v1);
+
+        let mat = Transform::rotate(Vector3d::new(-90.0, 0.0, 90.0));
+        let mat1 = Transform::rotate_roll(-90.0) * Transform::rotate_pitch(0.0) * Transform::rotate_yaw(90.0);
+        let v1 = &mat * &v;
+        println!("mat = {:?}", mat);
+        println!("mat1 = {:?}", mat1);
         println!("{:?}; len = {}", v1, &v1 * &v1);
     }
 

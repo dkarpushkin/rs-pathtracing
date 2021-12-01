@@ -1,0 +1,295 @@
+{
+    "background": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "shapes": [
+        {
+            "type": "Rectangle",
+            "x0": 0,
+            "x1": 555,
+            "y0": 0,
+            "y1": 555,
+            "transform": {
+                "translate": [
+                    555.0,
+                    0.0,
+                    555.0
+                ],
+                "rotate": [
+                    0.0,
+                    90.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "Green"
+        },
+        {
+            "type": "Rectangle",
+            "x0": 0,
+            "x1": 555,
+            "y0": 0,
+            "y1": 555,
+            "transform": {
+                "translate": [
+                    0.0,
+                    0.0,
+                    555.0
+                ],
+                "rotate": [
+                    0.0,
+                    90.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "Red"
+        },
+        {
+            "type": "Rectangle",
+            "x0": 0,
+            "x1": 555,
+            "y0": 0,
+            "y1": 555,
+            "transform": {
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    90.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "White"
+        },
+        {
+            "type": "Rectangle",
+            "x0": 0,
+            "x1": 555,
+            "y0": 0,
+            "y1": 555,
+            "transform": {
+                "translate": [
+                    0.0,
+                    555.0,
+                    0.0
+                ],
+                "rotate": [
+                    90.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "White"
+        },
+        {
+            "type": "Rectangle",
+            "x0": 0,
+            "x1": 555,
+            "y0": 0,
+            "y1": 555,
+            "transform": {
+                "translate": [
+                    555.0,
+                    0.0,
+                    555.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    90.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "White"
+        },
+        {
+            "type": "Rectangle",
+            "x0": 213,
+            "x1": 343,
+            "y0": 227,
+            "y1": 332,
+            "transform": {
+                "translate": [
+                    0.0,
+                    554.0,
+                    0.0
+                ],
+                "rotate": [
+                    90.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "Light"
+        },
+        {
+            "type": "Cube",
+            "name": "Cube1",
+            "transform": {
+                "translate": [
+                    347.5,
+                    165.0,
+                    377.5
+                ],
+                "rotate": [
+                    0.0,
+                    15.0,
+                    0.0
+                ],
+                "scale": [
+                    82.5,
+                    165,
+                    82.5
+                ]
+            },
+            "material": "White"
+        },
+        {
+            "type": "Cube",
+            "name": "Cube2",
+            "transform": {
+                "translate": [
+                    212.5,
+                    82.5,
+                    147.5
+                ],
+                "rotate": [
+                    0.0,
+                    -18.0,
+                    0.0
+                ],
+                "scale": [
+                    82.5,
+                    82.5,
+                    82.5
+                ]
+            },
+            "material": "White"
+        },
+        {
+            "type": "BruteForsableShape",
+            "name": "Heart",
+            "shape": {
+                "type": "Heart",
+                "sphere_radius": 1.45
+            },
+            "step": 0.01,
+            "transform": {
+                "translate": [
+                    212.5,
+                    200,
+                    147.5
+                ],
+                "rotate": [
+                    -95.0,
+                    -18.0,
+                    0.0
+                ],
+                "scale": [
+                    82.5,
+                    82.5,
+                    82.5
+                ]
+            },
+            "material": "Red"
+        }
+    ],
+    "camera": {
+        "position": [
+            278,
+            278,
+            -800
+        ],
+        "direction": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "up": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "fov": 40.0,
+        "focal_length": 1.0
+    },
+    "materials": {
+        "Green": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.12,
+                    0.45,
+                    0.15
+                ]
+            }
+        },
+        "Red": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.65,
+                    0.05,
+                    0.05
+                ]
+            }
+        },
+        "White": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.73,
+                    0.73,
+                    0.73
+                ]
+            }
+        },
+        "Light": {
+            "type": "DiffuseLight",
+            "emit": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 15,
+                    "y": 15,
+                    "z": 15
+                }
+            }
+        }
+    }
+}

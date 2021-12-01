@@ -18,7 +18,7 @@ impl Scatter {
     }
 }
 
-#[typetag::serde(tag = "type", content = "material")]
+#[typetag::serde(tag = "type")]
 pub trait Material: Debug + Send + Sync {
     fn scatter(&self, _ray: &Ray, _ray_hit: &RayHit) -> Option<Scatter> {
         None

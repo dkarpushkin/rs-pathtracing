@@ -7,12 +7,11 @@ use crate::algebra::{
 };
 use itertools::Itertools;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 use std::{any::Any, cmp::Ordering, f64::consts::PI, fmt::Debug, str::FromStr, sync::Arc};
 
 pub mod brute_forced;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct AABB {
     min_p: Vector3d,
     max_p: Vector3d,
@@ -36,6 +35,20 @@ impl Default for AABB {
 }
 
 impl AABB {
+    fn maximum() -> Self {
+        AABB {
+            min_p: Vector3d::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
+            max_p: Vector3d::new(f64::INFINITY, f64::INFINITY, f64::INFINITY),
+        }
+    }
+
+    fn minimum() -> Self {
+        AABB {
+            min_p: Vector3d::new(0.0, 0.0, 0.0),
+            max_p: Vector3d::new(0.0, 0.0, 0.0),
+        }
+    }
+
     fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> bool {
         let t_lower = (&self.min_p - &ray.origin).divide(&ray.direction);
         let t_upper = (&self.max_p - &ray.origin).divide(&ray.direction);
@@ -48,10 +61,22 @@ impl AABB {
 
         t_box_min <= t_box_max
     }
+
+    fn max(&self, other: &AABB) -> AABB {
+        AABB {
+            min_p: self.min_p.min(&other.min_p),
+            max_p: self.max_p.max(&other.max_p),
+        }
+    }
+
+    fn enlarge(&mut self, other: &AABB) {
+        self.min_p = self.min_p.min(&other.min_p);
+        self.max_p = self.max_p.max(&other.max_p);
+    }
 }
 
 pub trait Shape: Debug + Send + Sync {
-    fn ray_hit_bounded<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+    fn ray_hit_bounded(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         if let Some(bound) = self.get_bounding_box() {
             if bound.ray_hit(ray, min_t, max_t) {
                 self.ray_intersect(ray, min_t, max_t)
@@ -63,7 +88,7 @@ pub trait Shape: Debug + Send + Sync {
         }
     }
 
-    fn ray_hit<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+    fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         if let Some(transform) = self.get_transform() {
             let mut ret =
                 self.ray_hit_bounded(&transform.inverse_transform_ray(&ray), min_t, max_t)?;
@@ -77,7 +102,7 @@ pub trait Shape: Debug + Send + Sync {
         }
     }
 
-    fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>>;
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit>;
 
     fn get_bounding_box(&self) -> Option<&AABB> {
         None
@@ -91,15 +116,232 @@ pub trait Shape: Debug + Send + Sync {
 }
 
 #[derive(Debug)]
-pub struct Sphere {
+struct Rectangle {
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+    transform: InversableTransform,
+    material: Arc<Box<dyn Material>>,
+    aabb: AABB,
+}
+
+impl Rectangle {
+    fn new(
+        x0: f64,
+        y0: f64,
+        x1: f64,
+        y1: f64,
+        transform: InversableTransform,
+        material: Arc<Box<dyn Material>>,
+    ) -> Self {
+        Self {
+            x0,
+            y0,
+            x1,
+            y1,
+            transform,
+            material,
+            aabb: AABB {
+                min_p: Vector3d::new(x0, y0, -0.0001),
+                max_p: Vector3d::new(x1, y1, 0.0001),
+            },
+        }
+    }
+}
+
+impl Shape for Rectangle {
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        let t = -ray.origin.z / ray.direction.z;
+        if t < min_t || t > max_t {
+            None
+        } else {
+            let p = &ray.origin + &ray.direction * t;
+
+            if p.x < self.x0 || p.x > self.x1 || p.y < self.y0 || p.y > self.y1 {
+                None
+            } else {
+                Some(RayHit::new(
+                    p,
+                    Vector3d::new(0.0, 0.0, 1.0),
+                    t,
+                    &self.material,
+                    ray,
+                    (p.x - self.x0) / (self.x1 - self.x0),
+                    (p.y - self.y0) / (self.y1 - self.y0),
+                ))
+            }
+        }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn get_transform(&self) -> Option<&InversableTransform> {
+        Some(&self.transform)
+    }
+
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        Some(&self.aabb)
+    }
+}
+
+#[derive(Debug)]
+struct Cube {
+    min_p: Vector3d,
+    max_p: Vector3d,
+    name: String,
+    transform: InversableTransform,
+    material: Arc<Box<dyn Material>>,
+}
+
+impl Cube {
+    fn new(
+        name: String,
+        transform: InversableTransform,
+        material: Arc<Box<dyn Material>>,
+    ) -> Self {
+        // let xy_plane0 = Box::new(Rectangle::new(
+        //     p0.x,
+        //     p0.y,
+        //     p1.x,
+        //     p1.y,
+        //     InversableTransform::new(
+        //         Vector3d::new(0.0, 0.0, p0.z),
+        //         Vector3d::new(0.0, 0.0, 0.0),
+        //         Vector3d::new(0.0, 0.0, 0.0),
+        //     ),
+        //     material.clone(),
+        // ));
+        // let xy_plane1 = Box::new(Rectangle::new(
+        //     p0.x,
+        //     p0.y,
+        //     p1.x,
+        //     p1.y,
+        //     InversableTransform::new(
+        //         Vector3d::new(0.0, 0.0, p1.z),
+        //         Vector3d::new(0.0, 0.0, 0.0),
+        //         Vector3d::new(0.0, 0.0, 0.0),
+        //     ),
+        //     material.clone(),
+        // ));
+        // let xz_plane0 = Box::new(Rectangle::new(
+        //     p0.x, p0.y, p1.x, p1.y,
+        //     InversableTransform::new(
+        //         Vector3d::new(0.0, p0.y, 0.0),
+        //         Vector3d::new(0.0, 0.0, 90.0),
+        //         Vector3d::new(0.0, 0.0, 0.0),
+        //     ),
+        //     material.clone()
+        // ));
+        // let xz_plane1 = Box::new(Rectangle::new(
+        //     p0.x, p0.y, p1.x, p1.y,
+        //     InversableTransform::new(
+        //         Vector3d::new(0.0, p1.y, 0.0),
+        //         Vector3d::new(0.0, 0.0, 0.0),
+        //         Vector3d::new(0.0, 0.0, 0.0),
+        //     ),
+        //     material.clone()
+        // ));
+
+        Self {
+            min_p: Vector3d::new(-1.0, -1.0, -1.0),
+            max_p: Vector3d::new(1.0, 1.0, 1.0),
+            name,
+            transform,
+            material: material.clone(),
+        }
+    }
+}
+
+impl Shape for Cube {
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        let t_lower = (&self.min_p - &ray.origin).divide(&ray.direction);
+        let t_upper = (&self.max_p - &ray.origin).divide(&ray.direction);
+
+        let t_mins = t_lower.min(&t_upper);
+        let t_maxes = t_lower.max(&t_upper);
+
+        let t_box_min = t_mins.max_component().max(min_t);
+        let t_box_max = t_maxes.min_component().min(max_t);
+
+        if t_box_min > t_box_max {
+            None
+        } else {
+            let p = &ray.origin + t_box_min * &ray.direction;
+            let (normal, u, v) = {
+                // let p_abs = Vector3d::new(
+                //     (p.x - (self.min_p.x + self.max_p.x) / 2.0).abs(),
+                //     (p.y - (self.min_p.y + self.max_p.y) / 2.0).abs(),
+                //     (p.z - (self.min_p.z + self.max_p.z) / 2.0).abs()
+                // );
+                let p_abs = p.abs();
+                let max_c = p_abs.max_component();
+
+                if max_c == p_abs.x {
+                    (Vector3d::new(p.x, 0.0, 0.0), p.y, p.z)
+                } else if max_c == p_abs.y {
+                    (Vector3d::new(0.0, p.y, 0.0), p.x, p.z)
+                }else if max_c == p_abs.z {
+                    (Vector3d::new(0.0, 0.0, p.z), p.x, p.y)
+                } else {
+                    panic!("Fuck");
+                }
+            };
+            Some(RayHit::new(
+                p,
+                normal,
+                t_box_min,
+                &self.material,
+                ray,
+                u,
+                v
+            ))
+        }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn get_transform(&self) -> Option<&InversableTransform> {
+        Some(&self.transform)
+    }
+}
+
+#[derive(Debug)]
+struct Sphere {
     name: String,
     transform: InversableTransform,
     material: Arc<Box<dyn Material>>,
     aabb: AABB,
 }
 
+impl Sphere {
+    fn new(name: String, transform: InversableTransform, material: Arc<Box<dyn Material>>) -> Self {
+        Self {
+            name,
+            transform,
+            material,
+            aabb: AABB {
+                min_p: Vector3d {
+                    x: -1.0,
+                    y: -1.0,
+                    z: -1.0,
+                },
+                max_p: Vector3d {
+                    x: 1.0,
+                    y: 1.0,
+                    z: 1.0,
+                },
+            },
+        }
+    }
+}
+
 impl Shape for Sphere {
-    fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         let origin = &ray.origin;
         let dir = &ray.direction;
 
@@ -164,11 +406,36 @@ struct Torus {
     radius: f64,
     tube_radius: f64,
     transform: InversableTransform,
-    material: Box<dyn Material>,
+    material: Arc<Box<dyn Material>>,
+    aabb: AABB,
+}
+
+impl Torus {
+    fn new(
+        name: String,
+        radius: f64,
+        tube_radius: f64,
+        transform: InversableTransform,
+        material: Arc<Box<dyn Material>>,
+    ) -> Self {
+        let a = radius + tube_radius;
+        let aabb = AABB {
+            min_p: Vector3d::new(-a, -a, -tube_radius),
+            max_p: Vector3d::new(a, a, tube_radius),
+        };
+        Self {
+            name,
+            transform,
+            material,
+            aabb,
+            radius,
+            tube_radius,
+        }
+    }
 }
 
 impl Shape for Torus {
-    fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         let origin = &ray.origin;
         let dir = &ray.direction;
 
@@ -233,7 +500,7 @@ struct Tooth {
 }
 
 impl Shape for Tooth {
-    fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         // let o = self.transform.inverse.transform_point(&ray.origin);
         // let dir = self.transform.inverse.transform_vector(&ray.direction);
         let o = &ray.origin;
@@ -293,10 +560,11 @@ impl Shape for Tooth {
 pub struct ShapeCollection {
     name: String,
     shapes: Vec<Box<dyn Shape>>,
+    bounding_box: AABB,
 }
 
 impl Shape for ShapeCollection {
-    fn ray_intersect<'a>(&'a self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit<'a>> {
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         self.shapes
             .iter()
             .filter_map(|shape| shape.ray_hit(ray, min_t, max_t))
@@ -311,6 +579,10 @@ impl Shape for ShapeCollection {
             })
     }
 
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        Some(&self.bounding_box)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -318,7 +590,16 @@ impl Shape for ShapeCollection {
 
 impl ShapeCollection {
     pub fn new(name: &str, shapes: Vec<Box<dyn Shape>>) -> Self {
-        Self { name: name.into(), shapes }
+        let bounding_box = AABB::maximum();
+        let bounding_box = shapes.iter().fold(AABB::minimum(), |mut acc, shape| {
+            acc.enlarge(shape.get_bounding_box().unwrap_or(&bounding_box));
+            acc
+        });
+        Self {
+            name: name.into(),
+            shapes,
+            bounding_box: bounding_box,
+        }
     }
 
     pub fn ad_random_spheres(&mut self, amount: u32) {
@@ -393,45 +674,139 @@ impl ShapeCollection {
     }
 }
 
-pub mod json_models {
-    use super::{material::Material, Shape, Sphere, AABB};
-    use crate::algebra::transform::InversableTransform;
+#[derive(Debug)]
+struct BvhNode {
+    left: Box<dyn Shape>,
+    right: Box<dyn Shape>,
+    bounding_box: AABB,
+}
+
+impl Shape for BvhNode {
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        let left_hit = self.left.ray_hit(ray, min_t, max_t);
+        match left_hit {
+            Some(hit) => self.right.ray_hit(ray, min_t, hit.distance).or(Some(hit)),
+            None => self.right.ray_hit(ray, min_t, max_t),
+        }
+    }
+
+    fn get_bounding_box(&self) -> Option<&AABB> {
+        Some(&self.bounding_box)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+mod json_models {
+    use super::{super::json_models::ShapeJson, material::Material};
+    use crate::algebra::{transform::InversableTransform, Vector3d};
     use serde::{Deserialize, Serialize};
     use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
-    #[typetag::serde(tag = "type")]
-    pub trait ShapeJson: Debug {
-        fn make_shape(&self, materials: &HashMap<String, Arc<Box<dyn Material>>>) -> Box<dyn Shape>;
-    }
-
     #[derive(Serialize, Deserialize, Debug)]
-    struct SphereJson {
+    struct Sphere {
         transform: InversableTransform,
         name: String,
-        material_name: String,
+        material: String,
     }
 
     #[typetag::serde]
-    impl ShapeJson for SphereJson {
-        fn make_shape(&self, materials: &HashMap<String, Arc<Box<dyn Material>>>) -> Box<dyn Shape> {
-            let aabb = AABB::default();
-            Box::new(Sphere {
-                name: self.name.clone(),
-                transform: self.transform.clone(),
-                material: materials[&self.material_name].clone(),
-                aabb: aabb,
-            })
+    impl ShapeJson for Sphere {
+        fn make_shape(
+            &self,
+            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+        ) -> Box<dyn super::Shape> {
+            Box::new(super::Sphere::new(
+                self.name.clone(),
+                self.transform.clone(),
+                materials[&self.material].clone(),
+            ))
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct Torus {
+        name: String,
+        radius: f64,
+        tube_radius: f64,
+        transform: InversableTransform,
+        material: String,
+    }
+
+    #[typetag::serde]
+    impl ShapeJson for Torus {
+        fn make_shape(
+            &self,
+            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+        ) -> Box<dyn super::Shape> {
+            Box::new(super::Torus::new(
+                self.name.clone(),
+                self.radius,
+                self.tube_radius,
+                self.transform.clone(),
+                materials[&self.material].clone(),
+            ))
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct Rectangle {
+        x0: f64,
+        y0: f64,
+        x1: f64,
+        y1: f64,
+        transform: InversableTransform,
+        material: String,
+    }
+
+    #[typetag::serde]
+    impl ShapeJson for Rectangle {
+        fn make_shape(
+            &self,
+            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+        ) -> Box<dyn super::Shape> {
+            Box::new(super::Rectangle::new(
+                self.x0,
+                self.y0,
+                self.x1,
+                self.y1,
+                self.transform.clone(),
+                materials[&self.material].clone(),
+            ))
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct Cube {
+        name: String,
+        transform: InversableTransform,
+        material: String,
+    }
+
+    #[typetag::serde]
+    impl ShapeJson for Cube {
+        fn make_shape(
+            &self,
+            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+        ) -> Box<dyn super::Shape> {
+            Box::new(super::Cube::new(
+                self.name.clone(),
+                self.transform.clone(),
+                materials[&self.material].clone(),
+            ))
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{str::FromStr, sync::Arc};
 
     use crate::{
         algebra::{transform::InversableTransform, Vector3d},
-        world::{material::EmptyMaterial, Ray, Shape},
+        world::{material::EmptyMaterial, shapes::AABB, Ray, Shape},
     };
 
     use super::Torus;
@@ -458,7 +833,8 @@ mod tests {
                 Vector3d::new(0.0, 0.0, 0.0),
                 Vector3d::new(1.0, 1.0, 1.0),
             ),
-            material: Box::new(mat),
+            material: Arc::new(Box::new(mat)),
+            aabb: AABB::default(),
         };
         println!("Torus: {:?}", tor);
 
