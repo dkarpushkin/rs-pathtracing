@@ -353,7 +353,7 @@ impl RendererState {
                 println!("({}, {})", mouse_x, mouse_y);
                 println!("rays: {:?}", &rays);
                 let r = ray_tracing::renderer::trace_pixel_samples(
-                    (index, rays),
+                    &(index, rays),
                     &*self.shared_world.read().unwrap(),
                     10,
                 );

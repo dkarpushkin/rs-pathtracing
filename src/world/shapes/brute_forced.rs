@@ -132,7 +132,7 @@ impl BruteForceShape for Heart {
     fn intersect_bound(&self, origin: &Vector3d, dir: &Vector3d) -> Option<(f64, f64)> {
         let o = origin.divide(&self.sphere_radius);
         let d = dir.divide(&self.sphere_radius);
-        let (x1, x2) = solve_quadratic_equation(d * d, d * o, o * o - 1.0)?;
+        let (x1, x2) = solve_quadratic_equation(&d * &d, &d * &o, &o * &o - 1.0)?;
 
         if x1 < 0.0 && x2 < 0.0 {
             None

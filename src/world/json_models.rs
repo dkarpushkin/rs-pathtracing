@@ -89,7 +89,7 @@ pub fn add_random_spheres(shapes: &mut Vec<Box<dyn Shape>>) {
         );
         let rad = 0.2;
 
-        if (center - Vector3d::new(4.0, 0.2, 0.0)).length() > 0.9 {
+        if (&center - Vector3d::new(4.0, 0.2, 0.0)).length() > 0.9 {
             let mat_choice: f64 = rng.gen();
 
             let mat: Box<dyn material::Material> = if mat_choice < 0.8 {
@@ -118,7 +118,7 @@ pub fn add_random_spheres(shapes: &mut Vec<Box<dyn Shape>>) {
             };
 
             let shape = Sphere::new(
-                format!(""),
+                format!("Sphere_{}_{}", a, b),
                 InversableTransform::new(
                     center,
                     Vector3d::new(0.0, 0.0, 0.0),

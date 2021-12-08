@@ -153,17 +153,30 @@ fn new_worker_thread(
 }
 
 pub fn trace_pixel_samples_group(input: InputDataVec, world: &Scene, depth: u32) -> OutputDataVec {
+    // let mut result = Vec::with_capacity(input.len());
+    // for (index, rays) in input {
+    //     let ln = rays.len() as f64;
+    //     let mut color_sum = Vector3d::zero();
+    //     for ray in rays {
+    //         let col = ray_color(world, &ray, depth);
+    //         color_sum += col;
+    //     }
+    //     result.push((index, color_sum / ln))
+    // }
+    // result
+
     input
         .iter()
-        .map(|(index, rays)| {
-            let samples_colors = rays.iter().map(|ray| ray_color(world, ray, depth));
-            let ln = samples_colors.len() as f64;
-            (*index, samples_colors.sum::<Vector3d>() / ln)
+        .map(|input_data| {
+            trace_pixel_samples(input_data, world, depth)
+            // let samples_colors = rays.iter().map(|ray| ray_color(world, ray, depth));
+            // let ln = samples_colors.len() as f64;
+            // (*index, samples_colors.sum::<Vector3d>() / ln)
         })
         .collect_vec()
 }
 
-pub fn trace_pixel_samples(input: InputData, world: &Scene, depth: u32) -> OutputData {
+pub fn trace_pixel_samples(input: &InputData, world: &Scene, depth: u32) -> OutputData {
     let samples_colors = input.1.iter().map(|ray| ray_color(world, ray, depth));
     let ln = samples_colors.len() as f64;
     (input.0, samples_colors.sum::<Vector3d>() / ln)

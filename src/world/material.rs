@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::algebra::Vector3d;
 
-use super::{Ray, RayHit, texture::Texture};
+use super::{texture::Texture, Ray, RayHit};
 
 pub struct Scatter {
     pub ray: Ray,
@@ -44,7 +44,7 @@ impl Material for Lambertian {
         }
 
         Some(Scatter::new(
-            Ray::new(ray_hit.point, direction),
+            Ray::new(ray_hit.point.clone(), direction),
             self.albedo.value(ray_hit.u, ray_hit.v, &ray_hit.point),
         ))
     }

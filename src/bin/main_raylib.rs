@@ -279,13 +279,11 @@ impl RendererState {
             self.is_redraw = true;
         }
         if input.is_key_down(KeyboardKey::KEY_E) {
-            // self.camera_control.move_towards(0.01);
-            self.shared_camera.write().unwrap().rotate_local(0.0, -0.01);
+            self.shared_camera.write().unwrap().rotate_local(0.0, 0.01);
             self.is_redraw = true;
         }
         if input.is_key_down(KeyboardKey::KEY_Q) {
-            // self.camera_control.move_towards(0.01);
-            self.shared_camera.write().unwrap().rotate_local(0.0, 0.01);
+            self.shared_camera.write().unwrap().rotate_local(0.0, -0.01);
             self.is_redraw = true;
         }
 
@@ -317,7 +315,6 @@ impl RendererState {
         }
 
         if input.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
-            // if let Some((mouse_x, mouse_y)) = input.mouse() {
             if input.is_cursor_on_screen() {
                 let mouse_x = input.get_mouse_x();
                 let mouse_y = input.get_mouse_y();
@@ -328,7 +325,7 @@ impl RendererState {
                 println!("({}, {})", mouse_x, mouse_y);
                 println!("rays: {:?}", &rays);
                 let r = ray_tracing::renderer::trace_pixel_samples(
-                    (index, rays),
+                    &(index, rays),
                     &*self.shared_world.read().unwrap(),
                     10,
                 );

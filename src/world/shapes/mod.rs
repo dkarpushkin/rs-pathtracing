@@ -112,16 +112,6 @@ impl AABB {
 
 pub trait Shape: Debug + Send + Sync {
     fn ray_hit_transformed(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
-        // if let Some(bound) = self.get_bounding_box() {
-        //     if bound.ray_hit(ray, min_t, max_t) {
-        //         self.ray_intersect(ray, min_t, max_t)
-        //     } else {
-        //         None
-        //     }
-        // } else {
-        //     self.ray_intersect(ray, min_t, max_t)
-        // }
-
         if let Some(transform) = self.get_transform() {
             let mut ret =
                 self.ray_intersect(&transform.inverse_transform_ray(&ray), min_t, max_t)?;
@@ -136,18 +126,6 @@ pub trait Shape: Debug + Send + Sync {
     }
 
     fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
-        // if let Some(transform) = self.get_transform() {
-        //     let mut ret =
-        //         self.ray_hit_bounded(&transform.inverse_transform_ray(&ray), min_t, max_t)?;
-
-        //     ret.point = transform.direct.transform_point(&ret.point);
-        //     ret.set_normal(transform.inverse.transform_normal(&ret.normal()), ray);
-
-        //     Some(ret)
-        // } else {
-        //     self.ray_hit_bounded(ray, min_t, max_t)
-        // }
-
         if let Some(bound) = self.get_bounding_box() {
             if bound.ray_hit(ray, min_t, max_t) {
                 self.ray_hit_transformed(ray, min_t, max_t)
@@ -218,14 +196,16 @@ impl Shape for Rectangle {
             if p.x < self.x0 || p.x > self.x1 || p.y < self.y0 || p.y > self.y1 {
                 None
             } else {
+                let u = (p.x - self.x0) / (self.x1 - self.x0);
+                let v = (p.y - self.y0) / (self.y1 - self.y0);
                 Some(RayHit::new(
                     p,
                     Vector3d::new(0.0, 0.0, 1.0),
                     t,
                     &self.material,
                     ray,
-                    (p.x - self.x0) / (self.x1 - self.x0),
-                    (p.y - self.y0) / (self.y1 - self.y0),
+                    u,
+                    v,
                 ))
             }
         }
@@ -852,8 +832,6 @@ mod json_models {
 
 #[cfg(test)]
 mod tests {
-    use raylib::ffi::Vector3;
-
     use super::Torus;
     use crate::{
         algebra::{approx_equal, transform::InversableTransform, Vector3d},
