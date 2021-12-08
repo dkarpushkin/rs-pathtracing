@@ -72,7 +72,7 @@
             "material": "Sphere2"
         },
         {
-            "type": "BruteForcableShape",
+            "type": "BruteForsableShape",
             "name": "Sphere3",
             "shape": {
                 "type": "Heart"

@@ -1,7 +1,7 @@
 {
     "shapes": [
         {
-            "type": "BruteForcableShape",
+            "type": "BruteForsableShape",
             "step": 0.01,
             "shape": {
                 "type": "DupinCyclide",
