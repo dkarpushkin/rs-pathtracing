@@ -1,10 +1,6 @@
-use super::{approx_equal, Vector3d};
-use itertools::{assert_equal, Itertools, MultiProduct};
-use num::Float;
-use rand::{
-    prelude::{IteratorRandom, SliceRandom},
-    thread_rng, Rng,
-};
+use super::Vector3d;
+use itertools::Itertools;
+use rand::{prelude::SliceRandom, thread_rng, Rng};
 
 #[derive(Debug, Clone)]
 pub struct Perlin {

@@ -1,4 +1,4 @@
-use raylib::{ffi::LoadTextureFromImage, prelude::*};
+use raylib::prelude::*;
 use std::{
     env, fs,
     sync::{Arc, RwLock},
@@ -46,7 +46,13 @@ fn main() {
         .title("Hello, World")
         .build();
 
-    let mut state = RendererState::new(&world_file, RenderMode::StepByStep, samples, width as u32, height as u32);
+    let mut state = RendererState::new(
+        &world_file,
+        RenderMode::StepByStep,
+        samples,
+        width as u32,
+        height as u32,
+    );
 
     let mut frame = vec![0; (width * height * 4) as usize];
 
@@ -111,11 +117,13 @@ fn main() {
     }
 }
 
+#[allow(dead_code)]
 enum RenderMode {
     Static,
     StepByStep,
 }
 
+#[allow(dead_code)]
 struct RendererState {
     is_redraw: bool,
     is_finished: bool,
@@ -145,16 +153,17 @@ impl RendererState {
     ) -> Self {
         let json_file =
             fs::read_to_string(world_file).expect("Something went wrong reading the file");
-        let scene = Scene::from_json(&json_file)
+        let mut scene = Scene::from_json(&json_file)
             .or_else(|err| {
                 error!("Loading world failed: {}", err);
                 Err(err)
             })
             .unwrap();
-        // world.ad_random_spheres(50);
+        // scene.generate_cubes(20);
+        // scene.add_random_spheres();
 
         let color_buffer = vec![Vector3d::new(0.0, 0.0, 0.0); (width * height) as usize];
-        let shared_camera = Arc::new(RwLock::new(scene.camera.clone()));
+        let shared_camera = Arc::new(RwLock::new(scene.camera().clone()));
         let shared_scene = Arc::new(RwLock::new(scene));
         let renderer: Box<dyn Renderer> = match render_mode {
             RenderMode::Static => Box::new(thread_pool_new::ThreadPoolRenderer::new(
@@ -211,6 +220,10 @@ impl RendererState {
             self.renderer
                 .start_rendering(self.shared_camera.clone(), &self.img_params, samples);
             self.render_start = Instant::now();
+
+            // for v in self.color_buffer.iter_mut() {
+            //     *v = Vector3d::zero();
+            // }
         }
 
         if !self.is_finished {
@@ -236,33 +249,43 @@ impl RendererState {
         let is_redrawn = self.is_redraw;
 
         if input.is_key_down(KeyboardKey::KEY_A) {
-            self.camera_control.rotate_horizontal(-0.005);
-            // self.shared_camera.write().unwrap().transfer(0.0, -0.2, 0.0);
+            // self.camera_control.rotate_horizontal(-0.005);
+            self.shared_camera.write().unwrap().transfer(0.0, -0.2, 0.0);
             self.is_redraw = true;
         }
         if input.is_key_down(KeyboardKey::KEY_D) {
-            self.camera_control.rotate_horizontal(0.005);
-            // self.shared_camera.write().unwrap().transfer(0.0, 0.2, 0.0);
+            // self.camera_control.rotate_horizontal(0.005);
+            self.shared_camera.write().unwrap().transfer(0.0, 0.2, 0.0);
             self.is_redraw = true;
         }
         if input.is_key_down(KeyboardKey::KEY_W) {
-            self.camera_control.rotate_vertical(-0.005);
-            // self.shared_camera.write().unwrap().transfer(0.2, 0.0, 0.0);
+            // self.camera_control.rotate_vertical(-0.005);
+            self.shared_camera.write().unwrap().transfer(0.2, 0.0, 0.0);
             self.is_redraw = true;
         }
         if input.is_key_down(KeyboardKey::KEY_S) {
-            self.camera_control.rotate_vertical(0.005);
-            // self.shared_camera.write().unwrap().transfer(-0.2, 0.0, 0.0);
+            // self.camera_control.rotate_vertical(0.005);
+            self.shared_camera.write().unwrap().transfer(-0.2, 0.0, 0.0);
             self.is_redraw = true;
         }
         if input.is_key_down(KeyboardKey::KEY_LEFT_SHIFT) {
-            self.camera_control.move_towards(-0.01);
-            // self.shared_camera.write().unwrap().transfer(0.0, 0.0, 0.2);
+            // self.camera_control.move_towards(-0.01);
+            self.shared_camera.write().unwrap().transfer(0.0, 0.0, 0.2);
             self.is_redraw = true;
         }
         if input.is_key_down(KeyboardKey::KEY_LEFT_CONTROL) {
-            self.camera_control.move_towards(0.01);
-            // self.shared_camera.write().unwrap().transfer(0.0, 0.0, -0.2);
+            // self.camera_control.move_towards(0.01);
+            self.shared_camera.write().unwrap().transfer(0.0, 0.0, -0.2);
+            self.is_redraw = true;
+        }
+        if input.is_key_down(KeyboardKey::KEY_E) {
+            // self.camera_control.move_towards(0.01);
+            self.shared_camera.write().unwrap().rotate_local(0.0, -0.01);
+            self.is_redraw = true;
+        }
+        if input.is_key_down(KeyboardKey::KEY_Q) {
+            // self.camera_control.move_towards(0.01);
+            self.shared_camera.write().unwrap().rotate_local(0.0, 0.01);
             self.is_redraw = true;
         }
 
@@ -324,6 +347,7 @@ impl RendererState {
         }
     }
 
+    #[allow(dead_code)]
     fn resize(&mut self, width: u32, height: u32) {
         self.img_params = ImageParams { width, height };
         self.color_buffer = vec![Vector3d::new(0.0, 0.0, 0.0); (width * height) as usize];

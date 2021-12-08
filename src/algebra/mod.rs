@@ -1,4 +1,8 @@
-use std::{fmt::Display, iter::Sum, ops::{Add, AddAssign, Div, Index, Mul, MulAssign, Neg, Sub}};
+use std::{
+    fmt::Display,
+    iter::Sum,
+    ops::{Add, AddAssign, Div, Index, Mul, MulAssign, Neg, Sub},
+};
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -26,6 +30,30 @@ pub struct Vector3d {
 impl Vector3d {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Vector3d { x, y, z }
+    }
+
+    pub fn zero() -> Self {
+        Vector3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
+
+    pub fn infinity() -> Self {
+        Vector3d {
+            x: f64::INFINITY,
+            y: f64::INFINITY,
+            z: f64::INFINITY,
+        }
+    }
+
+    pub fn neg_infinity() -> Self {
+        Vector3d {
+            x: f64::NEG_INFINITY,
+            y: f64::NEG_INFINITY,
+            z: f64::NEG_INFINITY,
+        }
     }
 
     pub fn random(min: f64, max: f64) -> Vector3d {
@@ -112,6 +140,7 @@ impl Vector3d {
         }
     }
 
+    #[inline]
     pub fn divide(&self, other: &Vector3d) -> Vector3d {
         Vector3d {
             x: self.x / other.x,
@@ -515,7 +544,7 @@ impl Index<usize> for Vector3d {
             0 => &self.x,
             1 => &self.y,
             2 => &self.z,
-            _ => panic!("Vector3d out of index")
+            _ => panic!("Vector3d out of index"),
         }
     }
 }

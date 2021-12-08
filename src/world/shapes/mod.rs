@@ -1,13 +1,17 @@
-use super::{
-    material::{self, Material},
-    texture, Ray, RayHit,
-};
-use crate::algebra::{
-    approx_equal, equation::solve_quantic_equation, transform::InversableTransform, Vector3d,
-};
 use itertools::Itertools;
 use rand::Rng;
-use std::{any::Any, cmp::Ordering, f64::consts::PI, fmt::Debug, str::FromStr, sync::Arc};
+
+use super::{
+    material::{self, Material},
+    Ray, RayHit,
+};
+use crate::algebra::{
+    approx_equal,
+    equation::solve_quantic_equation,
+    transform::{InversableTransform, Transform},
+    Vector3d,
+};
+use std::{any::Any, f64::consts::PI, fmt::Debug, ops::Index, sync::Arc};
 
 pub mod brute_forced;
 
@@ -34,6 +38,19 @@ impl Default for AABB {
     }
 }
 
+impl Index<usize> for AABB {
+    type Output = Vector3d;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.min_p,
+            1 => &self.max_p,
+            _ => panic!("Wrong index in AABB"),
+        }
+    }
+}
+
+#[allow(dead_code)]
 impl AABB {
     fn maximum() -> Self {
         AABB {
@@ -49,6 +66,7 @@ impl AABB {
         }
     }
 
+    #[inline]
     fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> bool {
         let t_lower = (&self.min_p - &ray.origin).divide(&ray.direction);
         let t_upper = (&self.max_p - &ray.origin).divide(&ray.direction);
@@ -73,32 +91,71 @@ impl AABB {
         self.min_p = self.min_p.min(&other.min_p);
         self.max_p = self.max_p.max(&other.max_p);
     }
+
+    fn transform(&self, transform: &Transform) -> AABB {
+        let mut points = Vec::with_capacity(8);
+        for i in 0..2 {
+            for j in 0..2 {
+                for k in 0..2 {
+                    points.push(Vector3d::new(self[i].x, self[j].y, self[k].z));
+                }
+            }
+        }
+        let (min_p, max_p) = points.iter().map(|p| transform.transform_point(p)).fold(
+            (Vector3d::infinity(), Vector3d::neg_infinity()),
+            |(min_p, max_p), p| (min_p.min(&p), max_p.max(&p)),
+        );
+
+        AABB { min_p, max_p }
+    }
 }
 
 pub trait Shape: Debug + Send + Sync {
-    fn ray_hit_bounded(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
-        if let Some(bound) = self.get_bounding_box() {
-            if bound.ray_hit(ray, min_t, max_t) {
-                self.ray_intersect(ray, min_t, max_t)
-            } else {
-                None
-            }
-        } else {
-            self.ray_intersect(ray, min_t, max_t)
-        }
-    }
+    fn ray_hit_transformed(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        // if let Some(bound) = self.get_bounding_box() {
+        //     if bound.ray_hit(ray, min_t, max_t) {
+        //         self.ray_intersect(ray, min_t, max_t)
+        //     } else {
+        //         None
+        //     }
+        // } else {
+        //     self.ray_intersect(ray, min_t, max_t)
+        // }
 
-    fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         if let Some(transform) = self.get_transform() {
             let mut ret =
-                self.ray_hit_bounded(&transform.inverse_transform_ray(&ray), min_t, max_t)?;
+                self.ray_intersect(&transform.inverse_transform_ray(&ray), min_t, max_t)?;
 
             ret.point = transform.direct.transform_point(&ret.point);
             ret.set_normal(transform.inverse.transform_normal(&ret.normal()), ray);
 
             Some(ret)
         } else {
-            self.ray_hit_bounded(ray, min_t, max_t)
+            self.ray_intersect(ray, min_t, max_t)
+        }
+    }
+
+    fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        // if let Some(transform) = self.get_transform() {
+        //     let mut ret =
+        //         self.ray_hit_bounded(&transform.inverse_transform_ray(&ray), min_t, max_t)?;
+
+        //     ret.point = transform.direct.transform_point(&ret.point);
+        //     ret.set_normal(transform.inverse.transform_normal(&ret.normal()), ray);
+
+        //     Some(ret)
+        // } else {
+        //     self.ray_hit_bounded(ray, min_t, max_t)
+        // }
+
+        if let Some(bound) = self.get_bounding_box() {
+            if bound.ray_hit(ray, min_t, max_t) {
+                self.ray_hit_transformed(ray, min_t, max_t)
+            } else {
+                None
+            }
+        } else {
+            self.ray_hit_transformed(ray, min_t, max_t)
         }
     }
 
@@ -188,7 +245,7 @@ impl Shape for Rectangle {
 }
 
 #[derive(Debug)]
-struct Cube {
+pub struct Cube {
     min_p: Vector3d,
     max_p: Vector3d,
     name: String,
@@ -197,54 +254,11 @@ struct Cube {
 }
 
 impl Cube {
-    fn new(
+    pub fn new(
         name: String,
         transform: InversableTransform,
         material: Arc<Box<dyn Material>>,
     ) -> Self {
-        // let xy_plane0 = Box::new(Rectangle::new(
-        //     p0.x,
-        //     p0.y,
-        //     p1.x,
-        //     p1.y,
-        //     InversableTransform::new(
-        //         Vector3d::new(0.0, 0.0, p0.z),
-        //         Vector3d::new(0.0, 0.0, 0.0),
-        //         Vector3d::new(0.0, 0.0, 0.0),
-        //     ),
-        //     material.clone(),
-        // ));
-        // let xy_plane1 = Box::new(Rectangle::new(
-        //     p0.x,
-        //     p0.y,
-        //     p1.x,
-        //     p1.y,
-        //     InversableTransform::new(
-        //         Vector3d::new(0.0, 0.0, p1.z),
-        //         Vector3d::new(0.0, 0.0, 0.0),
-        //         Vector3d::new(0.0, 0.0, 0.0),
-        //     ),
-        //     material.clone(),
-        // ));
-        // let xz_plane0 = Box::new(Rectangle::new(
-        //     p0.x, p0.y, p1.x, p1.y,
-        //     InversableTransform::new(
-        //         Vector3d::new(0.0, p0.y, 0.0),
-        //         Vector3d::new(0.0, 0.0, 90.0),
-        //         Vector3d::new(0.0, 0.0, 0.0),
-        //     ),
-        //     material.clone()
-        // ));
-        // let xz_plane1 = Box::new(Rectangle::new(
-        //     p0.x, p0.y, p1.x, p1.y,
-        //     InversableTransform::new(
-        //         Vector3d::new(0.0, p1.y, 0.0),
-        //         Vector3d::new(0.0, 0.0, 0.0),
-        //         Vector3d::new(0.0, 0.0, 0.0),
-        //     ),
-        //     material.clone()
-        // ));
-
         Self {
             min_p: Vector3d::new(-1.0, -1.0, -1.0),
             max_p: Vector3d::new(1.0, 1.0, 1.0),
@@ -266,7 +280,7 @@ impl Shape for Cube {
         let t_box_min = t_mins.max_component().max(min_t);
         let t_box_max = t_maxes.min_component().min(max_t);
 
-        if t_box_min > t_box_max {
+        if t_box_min > t_box_max || t_box_min > max_t {
             None
         } else {
             let p = &ray.origin + t_box_min * &ray.direction;
@@ -283,21 +297,13 @@ impl Shape for Cube {
                     (Vector3d::new(p.x, 0.0, 0.0), p.y, p.z)
                 } else if max_c == p_abs.y {
                     (Vector3d::new(0.0, p.y, 0.0), p.x, p.z)
-                }else if max_c == p_abs.z {
+                } else if max_c == p_abs.z {
                     (Vector3d::new(0.0, 0.0, p.z), p.x, p.y)
                 } else {
-                    panic!("Fuck");
+                    panic!("Unexpected max_c value: {}", max_c);
                 }
             };
-            Some(RayHit::new(
-                p,
-                normal,
-                t_box_min,
-                &self.material,
-                ray,
-                u,
-                v
-            ))
+            Some(RayHit::new(p, normal, t_box_min, &self.material, ray, u, v))
         }
     }
 
@@ -311,7 +317,7 @@ impl Shape for Cube {
 }
 
 #[derive(Debug)]
-struct Sphere {
+pub struct Sphere {
     name: String,
     transform: InversableTransform,
     material: Arc<Box<dyn Material>>,
@@ -319,23 +325,28 @@ struct Sphere {
 }
 
 impl Sphere {
-    fn new(name: String, transform: InversableTransform, material: Arc<Box<dyn Material>>) -> Self {
+    pub fn new(
+        name: String,
+        transform: InversableTransform,
+        material: Arc<Box<dyn Material>>,
+    ) -> Self {
+        let aabb = AABB {
+            min_p: Vector3d {
+                x: -1.0,
+                y: -1.0,
+                z: -1.0,
+            },
+            max_p: Vector3d {
+                x: 1.0,
+                y: 1.0,
+                z: 1.0,
+            },
+        };
         Self {
+            aabb: aabb.transform(&transform.direct),
             name,
             transform,
             material,
-            aabb: AABB {
-                min_p: Vector3d {
-                    x: -1.0,
-                    y: -1.0,
-                    z: -1.0,
-                },
-                max_p: Vector3d {
-                    x: 1.0,
-                    y: 1.0,
-                    z: 1.0,
-                },
-            },
         }
     }
 }
@@ -559,24 +570,35 @@ impl Shape for Tooth {
 #[derive(Debug)]
 pub struct ShapeCollection {
     name: String,
-    shapes: Vec<Box<dyn Shape>>,
+    pub shapes: Vec<Box<dyn Shape>>,
     bounding_box: AABB,
 }
 
 impl Shape for ShapeCollection {
     fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
-        self.shapes
-            .iter()
-            .filter_map(|shape| shape.ray_hit(ray, min_t, max_t))
-            .min_by(|a, b| {
-                if approx_equal(a.distance, b.distance) {
-                    Ordering::Equal
-                } else if a.distance < b.distance {
-                    Ordering::Less
-                } else {
-                    Ordering::Greater
-                }
-            })
+        // self.shapes
+        //     .iter()
+        //     .filter_map(|shape| shape.ray_hit(ray, min_t, max_t))
+        //     .min_by(|a, b| {
+        //         if approx_equal(a.distance, b.distance) {
+        //             Ordering::Equal
+        //         } else if a.distance < b.distance {
+        //             Ordering::Less
+        //         } else {
+        //             Ordering::Greater
+        //         }
+        //     })
+
+        let mut min_distance = max_t;
+        let mut min_hit: Option<RayHit> = None;
+        for shape in self.shapes.iter() {
+            if let Some(hit) = shape.ray_hit(ray, min_t, min_distance) {
+                min_distance = hit.distance;
+                min_hit = Some(hit);
+            }
+        }
+
+        min_hit
     }
 
     fn get_bounding_box(&self) -> Option<&AABB> {
@@ -595,98 +617,37 @@ impl ShapeCollection {
             acc.enlarge(shape.get_bounding_box().unwrap_or(&bounding_box));
             acc
         });
+        println!("Bounding box for {}: {:?}", name, bounding_box);
         Self {
             name: name.into(),
             shapes,
             bounding_box: bounding_box,
         }
     }
-
-    pub fn ad_random_spheres(&mut self, amount: u32) {
-        let mut rng = rand::thread_rng();
-
-        let spheres = self
-            .shapes
-            .iter()
-            .filter_map(|shape| {
-                let sphere = shape.as_any().downcast_ref::<Sphere>()?;
-                Some((
-                    sphere
-                        .transform
-                        .direct
-                        .transform_point(&Vector3d::new(0.0, 0.0, 0.0)),
-                    sphere
-                        .transform
-                        .direct
-                        .transform_vector(&Vector3d::new(1.0, 1.0, 1.0))
-                        .x,
-                ))
-            })
-            .collect_vec();
-
-        for _ in 0..amount {
-            let (rad, pos) = loop {
-                let rad = rng.gen_range(0.2..0.7);
-                let pos = Vector3d::new(
-                    rng.gen_range(-10.0..10.0),
-                    rad / 2.0,
-                    rng.gen_range(-10.0..10.0),
-                );
-
-                if spheres.iter().any(|(c, r)| (c - &pos).length() > r + rad) {
-                    break (rad, pos);
-                }
-            };
-
-            let mat_choice: f64 = rng.gen();
-
-            let mat: Box<dyn material::Material> = if mat_choice < 0.333 {
-                Box::new(material::Lambertian {
-                    albedo: Box::new(texture::SolidColor {
-                        color: Vector3d::random(0.0, 1.0),
-                    }),
-                })
-            } else if mat_choice > 0.666 {
-                Box::new(material::Metal {
-                    albedo: Box::new(texture::SolidColor {
-                        color: Vector3d::random(0.0, 1.0),
-                    }),
-                    fuzz: rng.gen(),
-                })
-            } else {
-                Box::new(material::Dielectric {
-                    index_of_refraction: 1.5,
-                })
-            };
-
-            let shape = Sphere {
-                material: Arc::new(mat),
-                transform: InversableTransform::new(
-                    pos,
-                    Vector3d::new(0.0, 0.0, 0.0),
-                    Vector3d::new(rad, rad, rad),
-                ),
-                aabb: AABB::default(),
-                name: String::from_str("Sphere1").unwrap(),
-            };
-            self.shapes.push(Box::new(shape));
-        }
-    }
 }
 
 #[derive(Debug)]
-struct BvhNode {
+pub struct BvhNode {
     left: Box<dyn Shape>,
-    right: Box<dyn Shape>,
+    right: Option<Box<dyn Shape>>,
     bounding_box: AABB,
 }
 
 impl Shape for BvhNode {
     fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         let left_hit = self.left.ray_hit(ray, min_t, max_t);
-        match left_hit {
-            Some(hit) => self.right.ray_hit(ray, min_t, hit.distance).or(Some(hit)),
-            None => self.right.ray_hit(ray, min_t, max_t),
+        if self.right.is_some() {
+            match left_hit {
+                Some(hit) => self
+                    .right
+                    .as_ref()
+                    .unwrap()
+                    .ray_hit(ray, min_t, hit.distance)
+                    .or(Some(hit)),
+                None => self.right.as_ref().unwrap().ray_hit(ray, min_t, max_t),
+            }
+        } else {
+            left_hit
         }
     }
 
@@ -699,9 +660,98 @@ impl Shape for BvhNode {
     }
 }
 
+impl BvhNode {
+    pub fn new(mut shapes: Vec<Box<dyn Shape>>) -> Self {
+        let mut rng = rand::thread_rng();
+        let axis = rng.gen_range(0..2);
+
+        if axis == 0 {
+            shapes.sort_by(|a, b| {
+                let a_bb = a
+                    .get_bounding_box()
+                    .expect(&format!("No bounding box for {:?}", a));
+                let b_bb = a
+                    .get_bounding_box()
+                    .expect(&format!("No bounding box for {:?}", b));
+
+                if a_bb.min_p.x < b_bb.min_p.x {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Greater
+                }
+            });
+        } else if axis == 1 {
+            shapes.sort_by(|a, b| {
+                let a_bb = a
+                    .get_bounding_box()
+                    .expect(&format!("No bounding box for {:?}", a));
+                let b_bb = a
+                    .get_bounding_box()
+                    .expect(&format!("No bounding box for {:?}", b));
+
+                if a_bb.min_p.y < b_bb.min_p.y {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Greater
+                }
+            });
+        } else {
+            shapes.sort_by(|a, b| {
+                let a_bb = a
+                    .get_bounding_box()
+                    .expect(&format!("No bounding box for {:?}", a));
+                let b_bb = a
+                    .get_bounding_box()
+                    .expect(&format!("No bounding box for {:?}", b));
+
+                if a_bb.min_p.z < b_bb.min_p.z {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Greater
+                }
+            });
+        }
+
+        let n = shapes.len();
+        let (left, right) = if n == 1 {
+            let s = shapes.swap_remove(0);
+            (s, None)
+        } else if n == 2 {
+            (shapes.swap_remove(0), Some(shapes.swap_remove(0)))
+        } else {
+            (
+                Box::new(BvhNode::new(shapes.drain(..n / 2).collect())) as Box<dyn Shape>,
+                Some(Box::new(BvhNode::new(shapes)) as Box<dyn Shape>),
+            )
+        };
+
+        let aabb = if right.is_some() {
+            let left_bb = left
+                .get_bounding_box()
+                .expect(&format!("No bounding box for {:?}", left));
+            let right_bb = right
+                .as_ref()
+                .unwrap()
+                .get_bounding_box()
+                .expect(&format!("No bounding box for {:?}", right));
+            left_bb.max(right_bb)
+        } else {
+            left.get_bounding_box()
+                .expect(&format!("No bounding box for {:?}", left))
+                .clone()
+        };
+
+        Self {
+            left,
+            right,
+            bounding_box: aabb,
+        }
+    }
+}
+
 mod json_models {
     use super::{super::json_models::ShapeJson, material::Material};
-    use crate::algebra::{transform::InversableTransform, Vector3d};
+    use crate::algebra::transform::InversableTransform;
     use serde::{Deserialize, Serialize};
     use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
@@ -802,14 +852,14 @@ mod json_models {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, sync::Arc};
-
-    use crate::{
-        algebra::{transform::InversableTransform, Vector3d},
-        world::{material::EmptyMaterial, shapes::AABB, Ray, Shape},
-    };
+    use raylib::ffi::Vector3;
 
     use super::Torus;
+    use crate::{
+        algebra::{approx_equal, transform::InversableTransform, Vector3d},
+        world::{material::EmptyMaterial, shapes::AABB, Ray, Shape},
+    };
+    use std::{str::FromStr, sync::Arc};
 
     #[test]
     fn test_torus() {
@@ -841,5 +891,26 @@ mod tests {
         let hit = tor.ray_intersect(&ray, 0.001, f64::INFINITY);
 
         println!("{:?}", hit);
+    }
+
+    #[test]
+    fn test_bound_transform() {
+        let b1 = AABB {
+            min_p: Vector3d::new(-1.0, -1.0, -1.0),
+            max_p: Vector3d::new(1.0, 1.0, 1.0),
+        };
+        let transform = InversableTransform::new(
+            Vector3d::new(-10.0, 5.0, 2.5),
+            Vector3d::new(0.0, 0.0, 0.0),
+            Vector3d::new(2.0, 2.0, 2.0),
+        );
+        let b2 = b1.transform(&transform.direct);
+
+        assert!(approx_equal(-12.0, b2.min_p.x));
+        assert!(approx_equal(3.0, b2.min_p.y));
+        assert!(approx_equal(0.5, b2.min_p.z));
+        assert!(approx_equal(-8.0, b2.max_p.x));
+        assert!(approx_equal(7.0, b2.max_p.y));
+        assert!(approx_equal(4.5, b2.max_p.z));
     }
 }

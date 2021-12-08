@@ -38,13 +38,13 @@ pub struct Lambertian {
 impl Material for Lambertian {
     fn scatter(&self, _ray: &Ray, ray_hit: &RayHit) -> Option<Scatter> {
         let mut direction = ray_hit.normal() + Vector3d::random_unit();
-        // let direction = &ray_hit.normal + Vector3d::random_in_hemisphere(&ray_hit.normal);
+        // let mut direction = ray_hit.normal() + Vector3d::random_in_hemisphere(ray_hit.normal());
         if direction.is_zero() {
             direction = ray_hit.normal().clone()
         }
 
         Some(Scatter::new(
-            Ray::new(ray_hit.point.clone(), direction),
+            Ray::new(ray_hit.point, direction),
             self.albedo.value(ray_hit.u, ray_hit.v, &ray_hit.point),
         ))
     }

@@ -1,0 +1,87 @@
+{
+    "background": [
+        0.1,
+        0.1,
+        0.1
+    ],
+    "shapes": [
+        
+    ],
+    "camera": {
+        "position": [
+            35.987257839023876,
+            417.87279910011466,
+            31.939356639974527
+        ],
+        "direction": [
+            0.10614196168296212,
+            -0.9815395838104849,
+            0.15910351782167725
+        ],
+        "up": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "fov": 40.0,
+        "focal_length": 1.0
+    },
+    "materials": {
+        "Green": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.12,
+                    0.45,
+                    0.15
+                ]
+            }
+        },
+        "Red": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.65,
+                    0.05,
+                    0.05
+                ]
+            }
+        },
+        "White": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.73,
+                    0.73,
+                    0.73
+                ]
+            }
+        },
+        "Light": {
+            "type": "DiffuseLight",
+            "emit": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 15,
+                    "y": 15,
+                    "z": 15
+                }
+            }
+        },
+        "Mirror": {
+            "type": "Metal",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.73,
+                    0.73,
+                    0.73
+                ]
+            },
+            "fuzz": 0.01
+        }
+    }
+}

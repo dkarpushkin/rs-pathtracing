@@ -224,7 +224,7 @@ impl RendererState {
         //     (120.0 as f64).to_radians(),
         // );
         let color_buffer = vec![Vector3d::new(0.0, 0.0, 0.0); (SIZE.0 * SIZE.1) as usize];
-        let shared_camera = Arc::new(RwLock::new(scene.camera.clone()));
+        let shared_camera = Arc::new(RwLock::new(scene.camera().clone()));
         let shared_scene = Arc::new(RwLock::new(scene));
         let renderer: Box<dyn Renderer> = match render_mode {
             RenderMode::Static => Box::new(thread_pool_new::ThreadPoolRenderer::new(

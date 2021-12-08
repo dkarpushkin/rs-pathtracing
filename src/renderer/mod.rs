@@ -39,9 +39,9 @@ pub fn ray_color(world: &Scene, ray: &Ray, depth: u32) -> Vector3d {
             // 0.5 * (ray_hit.normal.normalize() + Vector3d::new(1.0, 1.0, 1.0))
         }
         None => {
-            // let t = 0.5 * (ray.direction.y + 1.0);
-            // (1.0 - t) * Vector3d::new(1.0, 1.0, 1.0) + t * Vector3d::new(0.5, 0.7, 1.0)
-            world.background
+            let t = 0.5 * (ray.direction.y + 1.0);
+            (1.0 - t) * Vector3d::new(1.0, 1.0, 1.0) + t * Vector3d::new(0.5, 0.7, 1.0)
+            // world.background
         }
     }
 }

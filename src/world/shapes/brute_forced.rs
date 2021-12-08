@@ -8,7 +8,7 @@ use crate::{
 use std::{any::Any, fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
-struct BruteForsableShape {
+pub struct BruteForsableShape {
     transform: InversableTransform,
     material: Arc<Box<dyn Material>>,
     shape: Box<dyn BruteForceShape>,
@@ -85,7 +85,23 @@ impl Shape for BruteForsableShape {
     }
 }
 
-trait BruteForceShape: Debug + Send + Sync {
+impl BruteForsableShape {
+    pub fn new(
+        shape: Box<dyn BruteForceShape>,
+        step: f64,
+        transform: InversableTransform,
+        material: Arc<Box<dyn Material>>,
+    ) -> Self {
+        Self {
+            transform,
+            material,
+            shape,
+            step,
+        }
+    }
+}
+
+pub trait BruteForceShape: Debug + Send + Sync {
     fn shape_func(&self, p: &Vector3d) -> f64;
     fn intersect_bound(&self, origin: &Vector3d, dir: &Vector3d) -> Option<(f64, f64)>;
     fn gradient(&self, p: &Vector3d) -> Vector3d;
@@ -94,13 +110,13 @@ trait BruteForceShape: Debug + Send + Sync {
 }
 
 #[derive(Debug)]
-struct Heart {
+pub struct Heart {
     sphere_radius: Vector3d,
     bounding_box: AABB,
 }
 
 impl Heart {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let sphere_radius = 1.45;
         Self {
             sphere_radius: Vector3d::new(sphere_radius, sphere_radius / 2.05, sphere_radius),
