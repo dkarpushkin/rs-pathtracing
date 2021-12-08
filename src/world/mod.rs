@@ -176,13 +176,14 @@ impl Scene {
                 };
 
                 let shape = Sphere::new(
-                    format!(""),
+                    format!("Sphere_{}_{}", a, b),
                     InversableTransform::new(
                         center,
                         Vector3d::new(0.0, 0.0, 0.0),
                         Vector3d::new(rad, rad, rad),
                     ),
                     Arc::new(mat),
+                    false,
                 );
                 // self.world.shapes.push(Box::new(shape));
             }

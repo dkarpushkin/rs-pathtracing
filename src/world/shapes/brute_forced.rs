@@ -13,6 +13,7 @@ pub struct BruteForsableShape {
     material: Arc<Box<dyn Material>>,
     shape: Box<dyn BruteForceShape>,
     step: f64,
+    bounding_box: AABB,
 }
 
 impl Shape for BruteForsableShape {
@@ -81,7 +82,8 @@ impl Shape for BruteForsableShape {
     }
 
     fn get_bounding_box(&self) -> Option<&AABB> {
-        self.shape.get_bounding_box()
+        // self.shape.get_bounds()
+        Some(&self.bounding_box)
     }
 }
 
@@ -92,27 +94,33 @@ impl BruteForsableShape {
         transform: InversableTransform,
         material: Arc<Box<dyn Material>>,
     ) -> Self {
+        let bounds = shape.get_bounds();
+        let bounding_box = AABB {
+            min_p: bounds.0,
+            max_p: bounds.1,
+        }
+        .transform(&transform.direct);
         Self {
             transform,
             material,
             shape,
             step,
+            bounding_box,
         }
     }
 }
 
 pub trait BruteForceShape: Debug + Send + Sync {
-    fn shape_func(&self, p: &Vector3d) -> f64;
-    fn intersect_bound(&self, origin: &Vector3d, dir: &Vector3d) -> Option<(f64, f64)>;
+    fn get_bounds(&self) -> (Vector3d, Vector3d);
     fn gradient(&self, p: &Vector3d) -> Vector3d;
+    fn intersect_bound(&self, origin: &Vector3d, dir: &Vector3d) -> Option<(f64, f64)>;
+    fn shape_func(&self, p: &Vector3d) -> f64;
     fn uv(&self, p: &Vector3d) -> (f64, f64);
-    fn get_bounding_box(&self) -> Option<&AABB>;
 }
 
 #[derive(Debug)]
 pub struct Heart {
     sphere_radius: Vector3d,
-    bounding_box: AABB,
 }
 
 impl Heart {
@@ -120,10 +128,6 @@ impl Heart {
         let sphere_radius = 1.45;
         Self {
             sphere_radius: Vector3d::new(sphere_radius, sphere_radius / 2.05, sphere_radius),
-            bounding_box: AABB {
-                min_p: Vector3d::new(-sphere_radius, -sphere_radius, -sphere_radius),
-                max_p: Vector3d::new(sphere_radius, sphere_radius, sphere_radius),
-            },
         }
     }
 }
@@ -168,12 +172,19 @@ impl BruteForceShape for Heart {
         (0.0, 0.0)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
-        // Some(&AABB{
-        //     min_p: Vector3d::new(-self.sphere_radius, -self.sphere_radius, -self.sphere_radius),
-        //     max_p: Vector3d::new(self.sphere_radius, self.sphere_radius, self.sphere_radius),
-        // })
+    fn get_bounds(&self) -> (Vector3d, Vector3d) {
+        (
+            Vector3d::new(
+                -self.sphere_radius.x,
+                -self.sphere_radius.y,
+                -self.sphere_radius.z,
+            ),
+            Vector3d::new(
+                self.sphere_radius.x,
+                self.sphere_radius.y,
+                self.sphere_radius.z,
+            ),
+        )
     }
 }
 
@@ -181,20 +192,11 @@ impl BruteForceShape for Heart {
 struct Sine {
     a: f64,
     sphere_radius: f64,
-    bounding_box: AABB,
 }
 
 impl Sine {
     fn new(a: f64, sphere_radius: f64) -> Self {
-        let bounding_box = AABB {
-            min_p: Vector3d::new(-sphere_radius, -sphere_radius, -sphere_radius),
-            max_p: Vector3d::new(sphere_radius, sphere_radius, sphere_radius),
-        };
-        Self {
-            a,
-            sphere_radius,
-            bounding_box,
-        }
+        Self { a, sphere_radius }
     }
 }
 
@@ -239,8 +241,15 @@ impl BruteForceShape for Sine {
         (0.0, 0.0)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
+    fn get_bounds(&self) -> (Vector3d, Vector3d) {
+        (
+            Vector3d::new(
+                -self.sphere_radius,
+                -self.sphere_radius,
+                -self.sphere_radius,
+            ),
+            Vector3d::new(self.sphere_radius, self.sphere_radius, self.sphere_radius),
+        )
     }
 }
 
@@ -248,20 +257,11 @@ impl BruteForceShape for Sine {
 struct Star {
     a: f64,
     sphere_radius: f64,
-    bounding_box: AABB,
 }
 
 impl Star {
     fn new(a: f64, sphere_radius: f64) -> Self {
-        let bounding_box = AABB {
-            min_p: Vector3d::new(-sphere_radius, -sphere_radius, -sphere_radius),
-            max_p: Vector3d::new(sphere_radius, sphere_radius, sphere_radius),
-        };
-        Self {
-            a,
-            sphere_radius,
-            bounding_box,
-        }
+        Self { a, sphere_radius }
     }
 }
 
@@ -304,8 +304,15 @@ impl BruteForceShape for Star {
         (0.0, 0.0)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
+    fn get_bounds(&self) -> (Vector3d, Vector3d) {
+        (
+            Vector3d::new(
+                -self.sphere_radius,
+                -self.sphere_radius,
+                -self.sphere_radius,
+            ),
+            Vector3d::new(self.sphere_radius, self.sphere_radius, self.sphere_radius),
+        )
     }
 }
 
@@ -316,23 +323,16 @@ struct DupinCyclide {
     c: f64,
     d: f64,
     sphere_radius: f64,
-    bounding_box: AABB,
 }
 
 impl DupinCyclide {
     fn new(a: f64, b: f64, c: f64, d: f64, sphere_radius: f64) -> Self {
-        let bounding_box = AABB {
-            min_p: Vector3d::new(-sphere_radius, -sphere_radius, -sphere_radius),
-            max_p: Vector3d::new(sphere_radius, sphere_radius, sphere_radius),
-        };
-
         DupinCyclide {
             a,
             b,
             c,
             d,
             sphere_radius,
-            bounding_box,
         }
     }
 }
@@ -373,26 +373,26 @@ impl BruteForceShape for DupinCyclide {
         (p.x, p.y)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
+    fn get_bounds(&self) -> (Vector3d, Vector3d) {
+        (
+            Vector3d::new(
+                -self.sphere_radius,
+                -self.sphere_radius,
+                -self.sphere_radius,
+            ),
+            Vector3d::new(self.sphere_radius, self.sphere_radius, self.sphere_radius),
+        )
     }
 }
 
 #[derive(Debug)]
 struct HuntsSurface {
     sphere_radius: f64,
-    bounding_box: AABB,
 }
 
 impl HuntsSurface {
     fn new(sphere_radius: f64) -> Self {
-        Self {
-            sphere_radius,
-            bounding_box: AABB {
-                min_p: Vector3d::new(-sphere_radius, -sphere_radius, -sphere_radius),
-                max_p: Vector3d::new(sphere_radius, sphere_radius, sphere_radius),
-            },
-        }
+        Self { sphere_radius }
     }
 }
 
@@ -438,26 +438,26 @@ impl BruteForceShape for HuntsSurface {
         (p.x, p.y)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
+    fn get_bounds(&self) -> (Vector3d, Vector3d) {
+        (
+            Vector3d::new(
+                -self.sphere_radius,
+                -self.sphere_radius,
+                -self.sphere_radius,
+            ),
+            Vector3d::new(self.sphere_radius, self.sphere_radius, self.sphere_radius),
+        )
     }
 }
 
 #[derive(Debug)]
 struct Cushion {
     sphere_radius: f64,
-    bounding_box: AABB,
 }
 
 impl Cushion {
     fn new(sphere_radius: f64) -> Self {
-        Self {
-            sphere_radius,
-            bounding_box: AABB {
-                min_p: Vector3d::new(-sphere_radius, -sphere_radius, -sphere_radius),
-                max_p: Vector3d::new(sphere_radius, sphere_radius, sphere_radius),
-            },
-        }
+        Self { sphere_radius }
     }
 }
 
@@ -508,8 +508,15 @@ impl BruteForceShape for Cushion {
         (p.x, p.y)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
+    fn get_bounds(&self) -> (Vector3d, Vector3d) {
+        (
+            Vector3d::new(
+                -self.sphere_radius,
+                -self.sphere_radius,
+                -self.sphere_radius,
+            ),
+            Vector3d::new(self.sphere_radius, self.sphere_radius, self.sphere_radius),
+        )
     }
 }
 
@@ -533,12 +540,18 @@ mod serde_models {
             &self,
             materials: &HashMap<String, Arc<Box<dyn Material>>>,
         ) -> Box<dyn Shape> {
-            Box::new(super::BruteForsableShape {
-                transform: self.transform.clone(),
-                material: materials[&self.material].clone(),
-                shape: self.shape.make_shape(),
-                step: self.step,
-            })
+            Box::new(super::BruteForsableShape::new(
+                self.shape.make_shape(),
+                self.step,
+                self.transform.clone(),
+                materials[&self.material].clone(),
+            ))
+            // Box::new(super::BruteForsableShape {
+            //     transform: self.transform.clone(),
+            //     material: materials[&self.material].clone(),
+            //     shape: self.shape.make_shape(),
+            //     step: self.step,
+            // })
         }
     }
 

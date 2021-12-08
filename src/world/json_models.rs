@@ -125,6 +125,7 @@ pub fn add_random_spheres(shapes: &mut Vec<Box<dyn Shape>>) {
                     Vector3d::new(rad, rad, rad),
                 ),
                 Arc::new(mat),
+                false,
             );
             shapes.push(Box::new(shape));
         }

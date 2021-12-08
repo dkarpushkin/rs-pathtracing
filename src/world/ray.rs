@@ -39,7 +39,7 @@ impl<'a> RayHit<'a> {
         v: f64,
     ) -> Self {
         let is_front_face = &normal * &ray.direction < 0.0;
-        let normal = if is_front_face { normal } else { -normal };
+        // let normal = if is_front_face { normal } else { -normal };
         Self {
             point,
             normal: normal.normalize(),

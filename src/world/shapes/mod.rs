@@ -66,7 +66,6 @@ impl AABB {
         }
     }
 
-    #[inline]
     fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> bool {
         let t_lower = (&self.min_p - &ray.origin).divide(&ray.direction);
         let t_upper = (&self.max_p - &ray.origin).divide(&ray.direction);
@@ -302,6 +301,7 @@ pub struct Sphere {
     transform: InversableTransform,
     material: Arc<Box<dyn Material>>,
     aabb: AABB,
+    inverse_normal: bool,
 }
 
 impl Sphere {
@@ -309,6 +309,7 @@ impl Sphere {
         name: String,
         transform: InversableTransform,
         material: Arc<Box<dyn Material>>,
+        inverse_normal: bool
     ) -> Self {
         let aabb = AABB {
             min_p: Vector3d {
@@ -327,6 +328,7 @@ impl Sphere {
             name,
             transform,
             material,
+            inverse_normal
         }
     }
 }
@@ -361,7 +363,7 @@ impl Shape for Sphere {
         };
 
         let p = origin + dir * x;
-        let normal = p.clone();
+        let normal = if self.inverse_normal { -p } else { p.clone() };
 
         // let theta = (p.z).acos();
         // let phi = (p.y).atan2(p.x) + PI;
@@ -735,11 +737,18 @@ mod json_models {
     use serde::{Deserialize, Serialize};
     use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
+    fn default_false() -> bool {
+        false
+    }
+
     #[derive(Serialize, Deserialize, Debug)]
     struct Sphere {
         transform: InversableTransform,
         name: String,
         material: String,
+        
+        #[serde(default = "default_false")]
+        inverse_normal: bool,
     }
 
     #[typetag::serde]
@@ -752,6 +761,7 @@ mod json_models {
                 self.name.clone(),
                 self.transform.clone(),
                 materials[&self.material].clone(),
+                self.inverse_normal,
             ))
         }
     }

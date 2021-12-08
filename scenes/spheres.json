@@ -28,8 +28,14 @@
             "material": "Ground"
         },
         {
+            "name": "GlassSphere",
             "type": "Sphere",
-            "name": "Sphere1",
+            
+            "shape": {
+                "type": "Heart"
+            },
+            "step": 0.01,
+
             "transform": {
                 "translate": [
                     0.0,
@@ -37,7 +43,7 @@
                     0.0
                 ],
                 "rotate": [
-                    0.0,
+                    -90.0,
                     0.0,
                     0.0
                 ],
@@ -50,8 +56,41 @@
             "material": "Glass"
         },
         {
+            "name": "GlassSphereInside",
             "type": "Sphere",
+            
+            "shape": {
+                "type": "Heart"
+            },
+            "step": 0.01,
+
+            "transform": {
+                "translate": [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "material": "Glass",
+            "inverse_normal": true
+        },
+        {
             "name": "Sphere2",
+            "type": "BruteForsableShape",
+            "shape": {
+                "type": "Heart"
+            },
+            "step": 0.01,
             "transform": {
                 "translate": [
                     -4.0,
@@ -59,8 +98,8 @@
                     0.0
                 ],
                 "rotate": [
-                    0.0,
-                    0.0,
+                    -90.0,
+                    25.0,
                     0.0
                 ],
                 "scale": [
@@ -72,8 +111,8 @@
             "material": "Sphere2"
         },
         {
-            "type": "BruteForsableShape",
             "name": "Sphere3",
+            "type": "BruteForsableShape",
             "shape": {
                 "type": "Heart"
             },
@@ -81,12 +120,12 @@
             "transform": {
                 "translate": [
                     4.0,
-                    1.0,
+                    2.0,
                     0.0
                 ],
                 "rotate": [
-                    0.0,
-                    0.0,
+                    -90.0,
+                    -25.0,
                     0.0
                 ],
                 "scale": [
