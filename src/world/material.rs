@@ -40,11 +40,11 @@ impl Material for Lambertian {
         let mut direction = ray_hit.normal() + Vector3d::random_unit();
         // let mut direction = ray_hit.normal() + Vector3d::random_in_hemisphere(ray_hit.normal());
         if direction.is_zero() {
-            direction = ray_hit.normal().clone()
+            direction = *ray_hit.normal()
         }
 
         Some(Scatter::new(
-            Ray::new(ray_hit.point.clone(), direction),
+            Ray::new(ray_hit.point, direction),
             self.albedo.value(ray_hit.u, ray_hit.v, &ray_hit.point),
         ))
     }

@@ -5,7 +5,7 @@ use ray_tracing::{
         material::Lambertian,
         ray::Ray,
         shapes::{
-            brute_forced::{BruteForsableShape, Heart},
+            ray_marching::{RayMarchingShape, Heart},
             Cube, Shape, Sphere,
         },
         texture::SolidColor,
@@ -32,6 +32,7 @@ fn bench_intersections(c: &mut Criterion) {
                 color: Vector3d::new(0.9, 0.1, 0.1),
             }),
         })),
+        false,
     );
     let cube = Cube::new(
         "Test sphere".into(),
@@ -46,7 +47,7 @@ fn bench_intersections(c: &mut Criterion) {
             }),
         })),
     );
-    let heart = BruteForsableShape::new(
+    let heart = RayMarchingShape::new(
         Box::new(Heart::new()),
         0.01,
         InversableTransform::new(

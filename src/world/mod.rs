@@ -194,4 +194,9 @@ impl Scene {
     pub fn camera(&self) -> &Camera {
         &self.camera
     }
+
+    /// Get a reference to the scene's background.
+    pub fn background(&self) -> Vector3d {
+        self.background
+    }
 }

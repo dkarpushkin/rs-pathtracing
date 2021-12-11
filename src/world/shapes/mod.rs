@@ -13,7 +13,7 @@ use crate::algebra::{
 };
 use std::{any::Any, f64::consts::PI, fmt::Debug, ops::Index, sync::Arc};
 
-pub mod brute_forced;
+pub mod ray_marching;
 
 #[derive(Clone, Debug)]
 pub struct AABB {
@@ -125,22 +125,21 @@ pub trait Shape: Debug + Send + Sync {
     }
 
     fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
-        if let Some(bound) = self.get_bounding_box() {
-            if bound.ray_hit(ray, min_t, max_t) {
-                self.ray_hit_transformed(ray, min_t, max_t)
-            } else {
-                None
-            }
-        } else {
-            self.ray_hit_transformed(ray, min_t, max_t)
-        }
+        // if let Some(bound) = self.get_bounding_box() {
+        //     if bound.ray_hit(ray, min_t, max_t) {
+        //         self.ray_hit_transformed(ray, min_t, max_t)
+        //     } else {
+        //         None
+        //     }
+        // } else {
+        //     self.ray_hit_transformed(ray, min_t, max_t)
+        // }
+        self.ray_hit_transformed(ray, min_t, max_t)
     }
 
     fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit>;
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        None
-    }
+    fn get_bounding_box(&self) -> AABB;
 
     fn get_transform(&self) -> Option<&InversableTransform> {
         None
@@ -157,7 +156,6 @@ struct Rectangle {
     y1: f64,
     transform: InversableTransform,
     material: Arc<Box<dyn Material>>,
-    aabb: AABB,
 }
 
 impl Rectangle {
@@ -176,10 +174,6 @@ impl Rectangle {
             y1,
             transform,
             material,
-            aabb: AABB {
-                min_p: Vector3d::new(x0, y0, -0.0001),
-                max_p: Vector3d::new(x1, y1, 0.0001),
-            },
         }
     }
 }
@@ -218,8 +212,12 @@ impl Shape for Rectangle {
         Some(&self.transform)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.aabb)
+    fn get_bounding_box(&self) -> AABB {
+        AABB {
+            min_p: Vector3d::new(self.x0, self.y0, -0.0001),
+            max_p: Vector3d::new(self.x1, self.y1, 0.0001),
+        }
+        .transform(&self.transform.direct)
     }
 }
 
@@ -293,6 +291,14 @@ impl Shape for Cube {
     fn get_transform(&self) -> Option<&InversableTransform> {
         Some(&self.transform)
     }
+
+    fn get_bounding_box(&self) -> AABB {
+        AABB {
+            min_p: self.min_p,
+            max_p: self.max_p,
+        }
+        .transform(&self.transform.direct)
+    }
 }
 
 #[derive(Debug)]
@@ -300,7 +306,6 @@ pub struct Sphere {
     name: String,
     transform: InversableTransform,
     material: Arc<Box<dyn Material>>,
-    aabb: AABB,
     inverse_normal: bool,
 }
 
@@ -309,26 +314,13 @@ impl Sphere {
         name: String,
         transform: InversableTransform,
         material: Arc<Box<dyn Material>>,
-        inverse_normal: bool
+        inverse_normal: bool,
     ) -> Self {
-        let aabb = AABB {
-            min_p: Vector3d {
-                x: -1.0,
-                y: -1.0,
-                z: -1.0,
-            },
-            max_p: Vector3d {
-                x: 1.0,
-                y: 1.0,
-                z: 1.0,
-            },
-        };
         Self {
-            aabb: aabb.transform(&transform.direct),
             name,
             transform,
             material,
-            inverse_normal
+            inverse_normal,
         }
     }
 }
@@ -388,8 +380,20 @@ impl Shape for Sphere {
         Some(&self.transform)
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.aabb)
+    fn get_bounding_box(&self) -> AABB {
+        AABB {
+            min_p: Vector3d {
+                x: -1.0,
+                y: -1.0,
+                z: -1.0,
+            },
+            max_p: Vector3d {
+                x: 1.0,
+                y: 1.0,
+                z: 1.0,
+            },
+        }
+        .transform(&self.transform.direct)
     }
 }
 
@@ -400,7 +404,6 @@ struct Torus {
     tube_radius: f64,
     transform: InversableTransform,
     material: Arc<Box<dyn Material>>,
-    aabb: AABB,
 }
 
 impl Torus {
@@ -411,16 +414,10 @@ impl Torus {
         transform: InversableTransform,
         material: Arc<Box<dyn Material>>,
     ) -> Self {
-        let a = radius + tube_radius;
-        let aabb = AABB {
-            min_p: Vector3d::new(-a, -a, -tube_radius),
-            max_p: Vector3d::new(a, a, tube_radius),
-        };
         Self {
             name,
             transform,
             material,
-            aabb,
             radius,
             tube_radius,
         }
@@ -482,6 +479,15 @@ impl Shape for Torus {
 
     fn get_transform(&self) -> Option<&InversableTransform> {
         Some(&self.transform)
+    }
+
+    fn get_bounding_box(&self) -> AABB {
+        let a = self.radius + self.tube_radius;
+        AABB {
+            min_p: Vector3d::new(-a, -a, -self.tube_radius),
+            max_p: Vector3d::new(a, a, self.tube_radius),
+        }
+        .transform(&self.transform.direct)
     }
 }
 
@@ -547,13 +553,16 @@ impl Shape for Tooth {
     fn get_transform(&self) -> Option<&InversableTransform> {
         Some(&self.transform)
     }
+
+    fn get_bounding_box(&self) -> AABB {
+        AABB::default()
+    }
 }
 
 #[derive(Debug)]
 pub struct ShapeCollection {
     name: String,
-    pub shapes: Vec<Box<dyn Shape>>,
-    bounding_box: AABB,
+    shapes: Vec<Box<dyn Shape>>,
 }
 
 impl Shape for ShapeCollection {
@@ -583,8 +592,11 @@ impl Shape for ShapeCollection {
         min_hit
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
+    fn get_bounding_box(&self) -> AABB {
+        self.shapes.iter().fold(AABB::minimum(), |mut acc, shape| {
+            acc.enlarge(&shape.get_bounding_box());
+            acc
+        })
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -594,16 +606,9 @@ impl Shape for ShapeCollection {
 
 impl ShapeCollection {
     pub fn new(name: &str, shapes: Vec<Box<dyn Shape>>) -> Self {
-        let bounding_box = AABB::maximum();
-        let bounding_box = shapes.iter().fold(AABB::minimum(), |mut acc, shape| {
-            acc.enlarge(shape.get_bounding_box().unwrap_or(&bounding_box));
-            acc
-        });
-        println!("Bounding box for {}: {:?}", name, bounding_box);
         Self {
             name: name.into(),
             shapes,
-            bounding_box: bounding_box,
         }
     }
 }
@@ -616,6 +621,14 @@ pub struct BvhNode {
 }
 
 impl Shape for BvhNode {
+    fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        if self.bounding_box.ray_hit(ray, min_t, max_t) {
+            self.ray_hit_transformed(ray, min_t, max_t)
+        } else {
+            None
+        }
+    }
+
     fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
         let left_hit = self.left.ray_hit(ray, min_t, max_t);
         if self.right.is_some() {
@@ -633,8 +646,8 @@ impl Shape for BvhNode {
         }
     }
 
-    fn get_bounding_box(&self) -> Option<&AABB> {
-        Some(&self.bounding_box)
+    fn get_bounding_box(&self) -> AABB {
+        self.bounding_box.clone()
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -649,12 +662,8 @@ impl BvhNode {
 
         if axis == 0 {
             shapes.sort_by(|a, b| {
-                let a_bb = a
-                    .get_bounding_box()
-                    .expect(&format!("No bounding box for {:?}", a));
-                let b_bb = a
-                    .get_bounding_box()
-                    .expect(&format!("No bounding box for {:?}", b));
+                let a_bb = a.get_bounding_box();
+                let b_bb = b.get_bounding_box();
 
                 if a_bb.min_p.x < b_bb.min_p.x {
                     std::cmp::Ordering::Less
@@ -664,12 +673,8 @@ impl BvhNode {
             });
         } else if axis == 1 {
             shapes.sort_by(|a, b| {
-                let a_bb = a
-                    .get_bounding_box()
-                    .expect(&format!("No bounding box for {:?}", a));
-                let b_bb = a
-                    .get_bounding_box()
-                    .expect(&format!("No bounding box for {:?}", b));
+                let a_bb = a.get_bounding_box();
+                let b_bb = b.get_bounding_box();
 
                 if a_bb.min_p.y < b_bb.min_p.y {
                     std::cmp::Ordering::Less
@@ -679,12 +684,8 @@ impl BvhNode {
             });
         } else {
             shapes.sort_by(|a, b| {
-                let a_bb = a
-                    .get_bounding_box()
-                    .expect(&format!("No bounding box for {:?}", a));
-                let b_bb = a
-                    .get_bounding_box()
-                    .expect(&format!("No bounding box for {:?}", b));
+                let a_bb = a.get_bounding_box();
+                let b_bb = b.get_bounding_box();
 
                 if a_bb.min_p.z < b_bb.min_p.z {
                     std::cmp::Ordering::Less
@@ -708,19 +709,11 @@ impl BvhNode {
         };
 
         let aabb = if right.is_some() {
-            let left_bb = left
-                .get_bounding_box()
-                .expect(&format!("No bounding box for {:?}", left));
-            let right_bb = right
-                .as_ref()
-                .unwrap()
-                .get_bounding_box()
-                .expect(&format!("No bounding box for {:?}", right));
-            left_bb.max(right_bb)
+            let left_bb = left.get_bounding_box();
+            let right_bb = right.as_ref().unwrap().get_bounding_box();
+            left_bb.max(&right_bb)
         } else {
-            left.get_bounding_box()
-                .expect(&format!("No bounding box for {:?}", left))
-                .clone()
+            left.get_bounding_box().clone()
         };
 
         Self {
@@ -746,7 +739,7 @@ mod json_models {
         transform: InversableTransform,
         name: String,
         material: String,
-        
+
         #[serde(default = "default_false")]
         inverse_normal: bool,
     }
@@ -872,7 +865,6 @@ mod tests {
                 Vector3d::new(1.0, 1.0, 1.0),
             ),
             material: Arc::new(Box::new(mat)),
-            aabb: AABB::default(),
         };
         println!("Torus: {:?}", tor);
 
