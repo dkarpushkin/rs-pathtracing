@@ -622,8 +622,8 @@ pub struct BoundedShape {
 impl BoundedShape {
     fn new(shape: Box<dyn Shape>) -> Self {
         Self {
-            shape,
             bounding_box: shape.get_bounding_box(),
+            shape,
         }
     }
 }
