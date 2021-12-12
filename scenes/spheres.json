@@ -6,135 +6,163 @@
     ],
     "shapes": [
         {
-            "type": "Sphere",
-            "name": "Ground",
-            "transform": {
-                "translate": [
-                    0.0,
-                    -1000.0,
-                    0.0
-                ],
-                "rotate": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1000,
-                    1000,
-                    1000
-                ]
-            },
-            "material": "Ground"
+            "type": "Collection",
+            "shapes": [
+                {
+                    "type": "Sphere",
+                    "name": "Sky",
+                    "transform": {
+                        "translate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "rotate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1000000,
+                            1000000,
+                            1000000
+                        ]
+                    },
+                    "material": "Sky"
+                }
+            ]
         },
         {
-            "name": "GlassSphere",
-            "type": "Sphere",
-            
-            "shape": {
-                "type": "Heart"
-            },
-            "step": 0.01,
-
-            "transform": {
-                "translate": [
-                    0.0,
-                    1.0,
-                    0.0
-                ],
-                "rotate": [
-                    -90.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            },
-            "material": "Glass"
-        },
-        {
-            "name": "GlassSphereInside",
-            "type": "Sphere",
-            
-            "shape": {
-                "type": "Heart"
-            },
-            "step": 0.01,
-
-            "transform": {
-                "translate": [
-                    0.0,
-                    1.0,
-                    0.0
-                ],
-                "rotate": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    0.5,
-                    0.5,
-                    0.5
-                ]
-            },
-            "material": "Glass",
-            "inverse_normal": true
-        },
-        {
-            "name": "Sphere2",
-            "type": "BruteForsableShape",
-            "shape": {
-                "type": "Heart"
-            },
-            "step": 0.01,
-            "transform": {
-                "translate": [
-                    -4.0,
-                    1.0,
-                    0.0
-                ],
-                "rotate": [
-                    -90.0,
-                    25.0,
-                    0.0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            },
-            "material": "Sphere2"
-        },
-        {
-            "name": "Sphere3",
-            "type": "BruteForsableShape",
-            "shape": {
-                "type": "Heart"
-            },
-            "step": 0.01,
-            "transform": {
-                "translate": [
-                    4.0,
-                    2.0,
-                    0.0
-                ],
-                "rotate": [
-                    -90.0,
-                    -25.0,
-                    0.0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            },
-            "material": "Sphere3"
+            "type": "BvhTree",
+            "shapes": [
+                {
+                    "type": "Sphere",
+                    "name": "Ground",
+                    "transform": {
+                        "translate": [
+                            0.0,
+                            -1000.0,
+                            0.0
+                        ],
+                        "rotate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1000,
+                            1000,
+                            1000
+                        ]
+                    },
+                    "material": "Ground"
+                },
+                {
+                    "name": "GlassSphere",
+                    "type": "Sphere",
+                    "shape": {
+                        "type": "Heart"
+                    },
+                    "step": 0.01,
+                    "transform": {
+                        "translate": [
+                            0.0,
+                            1.0,
+                            0.0
+                        ],
+                        "rotate": [
+                            -90.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ]
+                    },
+                    "material": "Glass"
+                },
+                {
+                    "name": "GlassSphereInside",
+                    "type": "Sphere",
+                    "shape": {
+                        "type": "Heart"
+                    },
+                    "step": 0.01,
+                    "transform": {
+                        "translate": [
+                            0.0,
+                            1.0,
+                            0.0
+                        ],
+                        "rotate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            0.5,
+                            0.5,
+                            0.5
+                        ]
+                    },
+                    "material": "Glass",
+                    "inverse_normal": true
+                },
+                {
+                    "name": "Sphere2",
+                    "type": "BruteForsableShape",
+                    "shape": {
+                        "type": "Heart"
+                    },
+                    "step": 0.01,
+                    "transform": {
+                        "translate": [
+                            -4.0,
+                            1.0,
+                            0.0
+                        ],
+                        "rotate": [
+                            -90.0,
+                            25.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ]
+                    },
+                    "material": "Sphere2"
+                },
+                {
+                    "name": "Sphere3",
+                    "type": "BruteForsableShape",
+                    "shape": {
+                        "type": "Heart"
+                    },
+                    "step": 0.01,
+                    "transform": {
+                        "translate": [
+                            4.0,
+                            2.0,
+                            0.0
+                        ],
+                        "rotate": [
+                            -90.0,
+                            -25.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ]
+                    },
+                    "material": "Sphere3"
+                }
+            ]
         }
     ],
     "camera": {
@@ -157,6 +185,17 @@
         "focal_length": 1.0
     },
     "materials": {
+        "Sky": {
+            "type": "DiffuseLight",
+            "emit": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 0.55,
+                    "y": 0.55,
+                    "z": 0.4
+                }
+            }
+        },
         "Ground": {
             "type": "Lambertian",
             "albedo": {

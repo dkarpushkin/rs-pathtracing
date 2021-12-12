@@ -18,7 +18,8 @@ pub mod texture;
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Scene {
-    world: Box<dyn Shape>,
+    // world: Box<dyn Shape>,
+    world: ShapeCollection,
     camera: Camera,
     materials: HashMap<String, Arc<Box<dyn Material>>>,
     background: Vector3d,
@@ -32,7 +33,8 @@ impl Scene {
         background: Vector3d,
     ) -> Self {
         Self {
-            world: Box::new(BvhNode::new(shapes)) as Box<dyn Shape>,
+            // world: Box::new(ShapeCollection::new(shapes)) as Box<dyn Shape>,
+            world: ShapeCollection::new(shapes),
             materials,
             camera,
             background,
@@ -102,92 +104,7 @@ impl Scene {
             })
             .collect_vec();
 
-        self.world = Box::new(ShapeCollection::new("World", shapes));
-    }
-
-    pub fn add_random_spheres(&mut self) {
-        let mut rng = rand::thread_rng();
-
-        // let spheres = self
-        //     .world
-        //     .shapes
-        //     .iter()
-        //     .filter_map(|shape| {
-        //         let sphere = shape.as_any().downcast_ref::<Sphere>()?;
-        //         Some((
-        //             sphere
-        //                 .transform
-        //                 .direct
-        //                 .transform_point(&Vector3d::new(0.0, 0.0, 0.0)),
-        //             sphere
-        //                 .transform
-        //                 .direct
-        //                 .transform_vector(&Vector3d::new(1.0, 1.0, 1.0))
-        //                 .x,
-        //         ))
-        //     })
-        //     .collect_vec();
-
-        for (a, b) in (-11..11).cartesian_product(-11..11) {
-            // let (rad, pos) = loop {
-            //     let rad = rng.gen_range(0.2..0.7);
-            //     let pos = Vector3d::new(
-            //         rng.gen_range(-10.0..10.0),
-            //         rad / 2.0,
-            //         rng.gen_range(-10.0..10.0),
-            //     );
-            //     if spheres.iter().any(|(c, r)| (c - &pos).length() > r + rad) {
-            //         break (rad, pos);
-            //     }
-            // };
-            let center = Vector3d::new(
-                a as f64 + 0.9 * rng.gen::<f64>(),
-                0.2,
-                b as f64 + 0.9 * rng.gen::<f64>(),
-            );
-            let rad = 0.2;
-
-            if (&center - Vector3d::new(4.0, 0.2, 0.0)).length() > 0.9 {
-                let mat_choice: f64 = rng.gen();
-
-                let mat: Box<dyn material::Material> = if mat_choice < 0.8 {
-                    let random_color = Vector3d::random(0.0, 1.0);
-                    Box::new(material::Lambertian {
-                        albedo: Box::new(texture::SolidColor {
-                            color: random_color.product(&random_color),
-                        }),
-                    })
-                } else if mat_choice < 0.95 {
-                    let random_color = Vector3d::random(0.0, 1.0);
-                    Box::new(material::Metal {
-                        albedo: Box::new(texture::SolidColor {
-                            color: Vector3d::new(
-                                0.5 * (1.0 - random_color.x),
-                                0.5 * (1.0 - random_color.y),
-                                0.5 * (1.0 - random_color.z),
-                            ),
-                        }),
-                        fuzz: 0.5 * rng.gen::<f64>(),
-                    })
-                } else {
-                    Box::new(material::Dielectric {
-                        index_of_refraction: 1.5,
-                    })
-                };
-
-                let shape = Sphere::new(
-                    format!("Sphere_{}_{}", a, b),
-                    InversableTransform::new(
-                        center,
-                        Vector3d::new(0.0, 0.0, 0.0),
-                        Vector3d::new(rad, rad, rad),
-                    ),
-                    Arc::new(mat),
-                    false,
-                );
-                // self.world.shapes.push(Box::new(shape));
-            }
-        }
+        self.world = ShapeCollection::new(shapes);
     }
 
     /// Get a reference to the scene's camera.

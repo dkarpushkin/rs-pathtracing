@@ -1,6 +1,6 @@
 use super::{
     material::{self, Material},
-    shapes::{Shape, ShapeCollection, Sphere},
+    shapes::{BvhNode, Shape, Sphere},
     texture, Scene,
 };
 use crate::{
@@ -70,6 +70,7 @@ pub fn add_random_spheres(shapes: &mut Vec<Box<dyn Shape>>) {
     //     })
     //     .collect_vec();
 
+    let mut new_shapes = Vec::with_capacity(22 * 22);
     for (a, b) in (-11..11).cartesian_product(-11..11) {
         // let (rad, pos) = loop {
         //     let rad = rng.gen_range(0.2..0.7);
@@ -127,7 +128,9 @@ pub fn add_random_spheres(shapes: &mut Vec<Box<dyn Shape>>) {
                 Arc::new(mat),
                 false,
             );
-            shapes.push(Box::new(shape));
+            new_shapes.push(Box::new(shape) as Box<dyn Shape>);
         }
     }
+
+    shapes.push(Box::new(BvhNode::new(new_shapes)) as Box<dyn Shape>);
 }

@@ -66,7 +66,7 @@ impl AABB {
         }
     }
 
-    fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> bool {
+    fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<(f64, f64)> {
         let t_lower = (&self.min_p - &ray.origin).divide(&ray.direction);
         let t_upper = (&self.max_p - &ray.origin).divide(&ray.direction);
 
@@ -76,7 +76,11 @@ impl AABB {
         let t_box_min = t_mins.max_component().max(min_t);
         let t_box_max = t_maxes.min_component().min(max_t);
 
-        t_box_min <= t_box_max
+        if t_box_min <= t_box_max {
+            Some((t_box_min, t_box_max))
+        } else {
+            None
+        }
     }
 
     fn max(&self, other: &AABB) -> AABB {
@@ -241,7 +245,7 @@ impl Cube {
             max_p: Vector3d::new(1.0, 1.0, 1.0),
             name,
             transform,
-            material: material.clone(),
+            material: material,
         }
     }
 }
@@ -561,7 +565,6 @@ impl Shape for Tooth {
 
 #[derive(Debug)]
 pub struct ShapeCollection {
-    name: String,
     shapes: Vec<Box<dyn Shape>>,
 }
 
@@ -605,45 +608,71 @@ impl Shape for ShapeCollection {
 }
 
 impl ShapeCollection {
-    pub fn new(name: &str, shapes: Vec<Box<dyn Shape>>) -> Self {
+    pub fn new(shapes: Vec<Box<dyn Shape>>) -> Self {
+        Self { shapes }
+    }
+}
+
+#[derive(Debug)]
+pub struct BoundedShape {
+    shape: Box<dyn Shape>,
+    bounding_box: AABB,
+}
+
+impl BoundedShape {
+    fn new(shape: Box<dyn Shape>) -> Self {
         Self {
-            name: name.into(),
-            shapes,
+            shape,
+            bounding_box: shape.get_bounding_box(),
         }
+    }
+}
+
+impl Shape for BoundedShape {
+    fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        let (t_min, t_max) = self.bounding_box.ray_hit(ray, min_t, max_t)?;
+        self.shape.ray_hit(ray, t_min, t_max)
+    }
+
+    fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
+        self.shape.ray_hit(ray, min_t, max_t)
+    }
+
+    fn get_bounding_box(&self) -> AABB {
+        self.bounding_box.clone()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
 #[derive(Debug)]
 pub struct BvhNode {
     left: Box<dyn Shape>,
-    right: Option<Box<dyn Shape>>,
+    right: Box<dyn Shape>,
     bounding_box: AABB,
 }
 
 impl Shape for BvhNode {
     fn ray_hit(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
-        if self.bounding_box.ray_hit(ray, min_t, max_t) {
-            self.ray_hit_transformed(ray, min_t, max_t)
+        if let Some((t_min, t_max)) = self.bounding_box.ray_hit(ray, min_t, max_t) {
+            self.ray_hit_transformed(ray, t_min, t_max)
         } else {
             None
         }
     }
 
     fn ray_intersect(&self, ray: &Ray, min_t: f64, max_t: f64) -> Option<RayHit> {
-        let left_hit = self.left.ray_hit(ray, min_t, max_t);
-        if self.right.is_some() {
-            match left_hit {
-                Some(hit) => self
-                    .right
-                    .as_ref()
-                    .unwrap()
-                    .ray_hit(ray, min_t, hit.distance)
-                    .or(Some(hit)),
-                None => self.right.as_ref().unwrap().ray_hit(ray, min_t, max_t),
-            }
-        } else {
-            left_hit
+        // let left_hit = self.left.ray_hit(ray, min_t, max_t);
+        // if self.right.is_some() {
+        match self.left.ray_hit(ray, min_t, max_t) {
+            Some(hit) => self.right.ray_hit(ray, min_t, hit.distance).or(Some(hit)),
+            None => self.right.ray_hit(ray, min_t, max_t),
         }
+        // } else {
+        //     left_hit
+        // }
     }
 
     fn get_bounding_box(&self) -> AABB {
@@ -697,24 +726,31 @@ impl BvhNode {
 
         let n = shapes.len();
         let (left, right) = if n == 1 {
-            let s = shapes.swap_remove(0);
-            (s, None)
+            panic!("BvhNode::new : shapes has only one element");
         } else if n == 2 {
-            (shapes.swap_remove(0), Some(shapes.swap_remove(0)))
+            (shapes.swap_remove(0), shapes.swap_remove(0))
         } else {
-            (
-                Box::new(BvhNode::new(shapes.drain(..n / 2).collect())) as Box<dyn Shape>,
-                Some(Box::new(BvhNode::new(shapes)) as Box<dyn Shape>),
-            )
+            let left: Box<dyn Shape> = {
+                let mut l = shapes.drain(..n / 2);
+                if l.len() == 1 {
+                    Box::new(BoundedShape::new(l.next().unwrap()))
+                } else {
+                    Box::new(BvhNode::new(l.collect_vec()))
+                }
+            };
+
+            let right: Box<dyn Shape> = if shapes.len() == 1 {
+                Box::new(BoundedShape::new(shapes.swap_remove(0)))
+            } else {
+                Box::new(BvhNode::new(shapes))
+            };
+
+            (left, right)
         };
 
-        let aabb = if right.is_some() {
-            let left_bb = left.get_bounding_box();
-            let right_bb = right.as_ref().unwrap().get_bounding_box();
-            left_bb.max(&right_bb)
-        } else {
-            left.get_bounding_box().clone()
-        };
+        let left_bb = left.get_bounding_box();
+        let right_bb = right.get_bounding_box();
+        let aabb = left_bb.max(&right_bb);
 
         Self {
             left,
@@ -727,6 +763,7 @@ impl BvhNode {
 mod json_models {
     use super::{super::json_models::ShapeJson, material::Material};
     use crate::algebra::transform::InversableTransform;
+    use itertools::Itertools;
     use serde::{Deserialize, Serialize};
     use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
@@ -828,6 +865,46 @@ mod json_models {
                 self.name.clone(),
                 self.transform.clone(),
                 materials[&self.material].clone(),
+            ))
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct Collection {
+        shapes: Vec<Box<dyn ShapeJson>>,
+    }
+
+    #[typetag::serde]
+    impl ShapeJson for Collection {
+        fn make_shape(
+            &self,
+            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+        ) -> Box<dyn super::Shape> {
+            Box::new(super::ShapeCollection::new(
+                self.shapes
+                    .iter()
+                    .map(|shape| shape.make_shape(materials))
+                    .collect_vec(),
+            ))
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct BvhTree {
+        shapes: Vec<Box<dyn ShapeJson>>,
+    }
+
+    #[typetag::serde]
+    impl ShapeJson for BvhTree {
+        fn make_shape(
+            &self,
+            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+        ) -> Box<dyn super::Shape> {
+            Box::new(super::BvhNode::new(
+                self.shapes
+                    .iter()
+                    .map(|shape| shape.make_shape(materials))
+                    .collect_vec(),
             ))
         }
     }
