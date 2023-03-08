@@ -26,8 +26,6 @@ pub struct ThreadPoolRenderer {
     output_sender: Arc<Mutex<Sender<OutputDataVecOption>>>,
     output_receiver: Receiver<OutputDataVecOption>,
 
-    // control_sender: Sender<()>,
-    // control_receiver: Arc<Mutex<Receiver<()>>>,
     parking: Arc<(Mutex<bool>, Condvar)>,
 
     world: Arc<RwLock<Scene>>,
@@ -38,7 +36,7 @@ impl ThreadPoolRenderer {
     pub fn new(scene: Arc<RwLock<Scene>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
         let (input_sender, input_receiver) = channel();
         let (output_sender, output_receiver) = channel();
-        // let (control_sender, control_receiver) = channel();
+        
         let mut result = ThreadPoolRenderer {
             thread_number,
             depth,
@@ -47,8 +45,6 @@ impl ThreadPoolRenderer {
             input_receiver: Arc::new(Mutex::new(input_receiver)),
             output_sender: Arc::new(Mutex::new(output_sender)),
             output_receiver,
-            // control_sender,
-            // control_receiver: Arc::new(Mutex::new(control_receiver)),
             parking: Arc::new((Mutex::new(false), Condvar::new())),
             world: scene,
             is_started: false,
@@ -115,22 +111,16 @@ impl Renderer for ThreadPoolRenderer {
                         let mut running = lock.lock().unwrap();
                         *running = false;
 
-                        // println!("All finished");
                         break;
                     }
-                    // println!("{} finished", finished);
                     continue;
                 }
             };
 
-            // println!("Received {}", results.len());
             for (index, color) in results {
                 buffer[index as usize] = color;
             }
         }
-
-        // println!("Rendering finished");
-        // dispather.join().unwrap();
 
         true
     }

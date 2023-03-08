@@ -101,13 +101,9 @@ fn new_worker_thread(
     depth: u32,
 ) -> JoinHandle<()> {
     spawn(move || {
-        // let mut wait_time = time::Duration::microseconds(0);
-        // let mut process_time = time::Duration::microseconds(0);
-        // let mut process_units = 0;
         let (lock, cvar) = &*parking;
         let world = &*world.read().unwrap();
         loop {
-            // let start = time::Instant::now();
             let input = match input_receiver.lock().unwrap().recv() {
                 Ok(v) => v,
                 Err(_) => {
@@ -115,34 +111,13 @@ fn new_worker_thread(
                     break;
                 }
             };
-            // let end = time::Instant::now();
-            // wait_time += end - start;
-
             match input {
                 Some(v) => {
-                    // let start = time::Instant::now();
                     let result = trace_pixel_samples_group(v, world, depth);
-                    // let end = time::Instant::now();
-                    // process_time += end - start;
-
-                    // let start = time::Instant::now();
                     output_sender.lock().unwrap().send(Some(result)).unwrap();
-                    // let end = time::Instant::now();
-                    // wait_time += end - start;
                 }
                 None => {
-                    // println!("Sent None");
                     output_sender.lock().unwrap().send(None).unwrap();
-                    // println!(
-                    //     "Thread {}; Processing time: {}; Wait time: {}; Units: {}",
-                    //     thread_id,
-                    //     process_time.whole_milliseconds(),
-                    //     wait_time.whole_milliseconds(),
-                    //     process_units
-                    // );
-                    // process_time = time::Duration::microseconds(0);
-                    // wait_time = time::Duration::microseconds(0);
-                    // process_units = 0;
 
                     let running = lock.lock().unwrap();
                     cvar.wait(running).unwrap();

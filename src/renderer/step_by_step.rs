@@ -26,8 +26,6 @@ pub struct ThreadPoolRenderer {
     output_sender: Arc<Mutex<Sender<OutputDataVecOption>>>,
     output_receiver: Receiver<OutputDataVecOption>,
 
-    // control_sender: Sender<()>,
-    // control_receiver: Arc<Mutex<Receiver<()>>>,
     parking: Arc<(Mutex<bool>, Condvar)>,
 
     world: Arc<RwLock<Scene>>,
@@ -39,7 +37,7 @@ impl ThreadPoolRenderer {
     pub fn new(scene: Arc<RwLock<Scene>>, thread_number: u32, depth: u32) -> ThreadPoolRenderer {
         let (input_sender, input_receiver) = channel();
         let (output_sender, output_receiver) = channel();
-        // let (control_sender, control_receiver) = channel();
+        
         let mut result = ThreadPoolRenderer {
             thread_number,
             depth,
@@ -48,8 +46,6 @@ impl ThreadPoolRenderer {
             input_receiver: Arc::new(Mutex::new(input_receiver)),
             output_sender: Arc::new(Mutex::new(output_sender)),
             output_receiver,
-            // control_sender,
-            // control_receiver: Arc::new(Mutex::new(control_receiver)),
             parking: Arc::new((Mutex::new(false), Condvar::new())),
             world: scene,
             is_started: false,
@@ -87,7 +83,6 @@ impl Renderer for ThreadPoolRenderer {
 
         new_dispatcher_thread(
             camera,
-            // ((width * height) / self.thread_number / 8) as usize,
             width,
             height,
             samples_number,
@@ -101,30 +96,6 @@ impl Renderer for ThreadPoolRenderer {
             *running = true;
             cvar.notify_all();
         }
-
-        // let mut finished = 0;
-        // for results in &self.output_receiver {
-        //     let results = match results {
-        //         Some(v) => v,
-        //         None => {
-        //             finished += 1;
-        //             if finished == self.thread_number {
-        //                 let mut running = lock.lock().unwrap();
-        //                 *running = false;
-
-        //                 // println!("All finished");
-        //                 break;
-        //             }
-        //             // println!("{} finished", finished);
-        //             continue;
-        //         }
-        //     };
-
-        //     // println!("Received {}", results.len());
-        //     for (x, y, color) in results {
-        //         buffer[(y * width + x) as usize] = color;
-        //     }
-        // }
     }
 
     fn render_step(&mut self, buffer: &mut Vec<Vector3d>) -> bool {
@@ -133,7 +104,6 @@ impl Renderer for ThreadPoolRenderer {
             let results = match msg {
                 Some(v) => v,
                 None => {
-                    // println!("Received None");
                     self.num_finished += 1;
                     if self.num_finished == self.thread_number {
                         return true;
@@ -142,7 +112,6 @@ impl Renderer for ThreadPoolRenderer {
                 }
             };
 
-            // println!("Received {}", results.len());
             for (index, color) in results {
                 buffer[index as usize] = color;
             }

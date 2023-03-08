@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use rand::Rng;
 
 use super::{
@@ -221,6 +220,7 @@ impl Shape for Rectangle {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Cube {
     min_p: Vector3d,
@@ -301,6 +301,7 @@ impl Shape for Cube {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Sphere {
     name: String,
@@ -397,6 +398,7 @@ impl Shape for Sphere {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Torus {
     name: String,
@@ -491,6 +493,7 @@ impl Shape for Torus {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Tooth {
     name: String,
@@ -559,6 +562,7 @@ impl Shape for Tooth {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ShapeCollection {
     name: String,
