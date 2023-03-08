@@ -64,7 +64,7 @@ fn main() -> Result<(), Error> {
         // Handle input events
         if input.update(&event) {
             // Close events
-            if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
+            if input.key_pressed(VirtualKeyCode::Escape) || input.close_requested() || input.destroyed() {
                 *control_flow = ControlFlow::Exit;
                 return;
             }
@@ -166,7 +166,7 @@ fn main() -> Result<(), Error> {
             //     }
             // }
             Event::RedrawRequested(_) => {
-                let frame = pixels.get_frame();
+                let frame = pixels.get_frame_mut();
 
                 state.render(frame);
 
