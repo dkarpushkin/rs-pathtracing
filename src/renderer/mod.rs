@@ -88,7 +88,6 @@ fn new_dispatcher_thread(
         for _ in 0..threads_num {
             input_sender.lock().unwrap().send(None).unwrap();
         }
-        // println!("Dispatcher finished");
     })
 }
 

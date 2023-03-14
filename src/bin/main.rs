@@ -88,7 +88,7 @@ fn main() -> Result<(), Error> {
             // Resize the window
             if let Some(size) = input.window_resized() {
                 // println!("Resized");
-                pixels.resize_surface(size.width, size.height);
+                pixels.resize_surface(size.width, size.height).unwrap();
                 window.request_redraw();
             }
 

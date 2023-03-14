@@ -1,16 +1,16 @@
-use super::{super::Material, Shape, AABB};
+use super::{Shape, AABB};
 use crate::{
     algebra::{
         approx_equal, equation::solve_quadratic_equation, transform::InversableTransform, Vector3d,
     },
-    world::{Ray, RayHit},
+    world::{Ray, RayHit, material::MaterialPtr},
 };
-use std::{any::Any, fmt::Debug, sync::Arc};
+use std::{any::Any, fmt::Debug};
 
 #[derive(Debug)]
 pub struct RayMarchingShape {
     transform: InversableTransform,
-    material: Arc<Box<dyn Material>>,
+    material: MaterialPtr,
     shape: Box<dyn ShapeFunction>,
     step: f64,
     depth: u8,
@@ -96,7 +96,7 @@ impl RayMarchingShape {
         shape: Box<dyn ShapeFunction>,
         step: f64,
         transform: InversableTransform,
-        material: Arc<Box<dyn Material>>,
+        material: MaterialPtr,
         depth: u8,
     ) -> Self {
         Self {
@@ -520,10 +520,10 @@ impl ShapeFunction for Cushion {
 }
 
 mod serde_models {
-    use super::{super::super::json_models::ShapeJson, super::material::Material, ShapeFunction};
-    use crate::{algebra::transform::InversableTransform, world::shapes::Shape};
+    use super::{super::super::json_models::ShapeJson, ShapeFunction};
+    use crate::{algebra::transform::InversableTransform, world::{shapes::Shape, material::MaterialPtr}};
     use serde::{Deserialize, Serialize};
-    use std::{collections::HashMap, fmt::Debug, sync::Arc};
+    use std::{collections::HashMap, fmt::Debug};
 
     fn default_depth() -> u8 {
         4
@@ -543,7 +543,7 @@ mod serde_models {
     impl ShapeJson for BruteForsableShape {
         fn make_shape(
             &self,
-            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+            materials: &HashMap<String, MaterialPtr>,
         ) -> Box<dyn Shape> {
             Box::new(super::RayMarchingShape::new(
                 self.shape.make_shape(),
@@ -552,12 +552,6 @@ mod serde_models {
                 materials[&self.material].clone(),
                 self.depth
             ))
-            // Box::new(super::BruteForsableShape {
-            //     transform: self.transform.clone(),
-            //     material: materials[&self.material].clone(),
-            //     shape: self.shape.make_shape(),
-            //     step: self.step,
-            // })
         }
     }
 

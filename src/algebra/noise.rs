@@ -2,6 +2,7 @@ use super::Vector3d;
 use itertools::Itertools;
 use rand::{prelude::SliceRandom, thread_rng, Rng};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Perlin {
     perm_x: Vec<usize>,

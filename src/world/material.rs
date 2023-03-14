@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,8 @@ pub trait Material: Debug + Send + Sync {
         Vector3d::new(0.0, 0.0, 0.0)
     }
 }
+
+pub type MaterialPtr = Arc<Box<dyn Material>>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lambertian {

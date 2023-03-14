@@ -1,5 +1,5 @@
 use self::json_models::SceneJson;
-use self::material::Material;
+use self::material::{Material, MaterialPtr};
 use self::ray::{Ray, RayHit};
 use self::shapes::{BvhNode, Cube, Shape, ShapeCollection, Sphere};
 use crate::algebra::transform::InversableTransform;
@@ -20,14 +20,14 @@ pub mod texture;
 pub struct Scene {
     world: Box<dyn Shape>,
     camera: Camera,
-    materials: HashMap<String, Arc<Box<dyn Material>>>,
+    materials: HashMap<String, MaterialPtr>,
     background: Vector3d,
 }
 
 impl Scene {
     pub fn new(
         shapes: Vec<Box<dyn Shape>>,
-        materials: HashMap<String, Arc<Box<dyn Material>>>,
+        materials: HashMap<String, MaterialPtr>,
         camera: Camera,
         background: Vector3d,
     ) -> Self {

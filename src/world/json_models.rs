@@ -1,6 +1,6 @@
 use super::{
-    material::{self, Material},
-    shapes::{Shape, ShapeCollection, Sphere},
+    material::{self, Material, MaterialPtr},
+    shapes::{Shape, Sphere},
     texture, Scene,
 };
 use crate::{
@@ -16,7 +16,7 @@ use std::{collections::HashMap, fmt::Debug, sync::Arc};
 pub trait ShapeJson: Debug {
     fn make_shape(
         &self,
-        materials: &HashMap<String, Arc<Box<dyn Material>>>,
+        materials: &HashMap<String, MaterialPtr>,
     ) -> Box<dyn super::Shape>;
 }
 
@@ -30,7 +30,7 @@ pub struct SceneJson {
 
 impl From<SceneJson> for Scene {
     fn from(scene: SceneJson) -> Self {
-        let materials: HashMap<String, Arc<Box<dyn Material>>> = HashMap::from_iter(
+        let materials: HashMap<String, MaterialPtr> = HashMap::from_iter(
             scene
                 .materials
                 .into_iter()

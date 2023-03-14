@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use super::{
-    material::{self, Material},
+    material::{self, Material, MaterialPtr},
     Ray, RayHit,
 };
 use crate::algebra::{
@@ -154,7 +154,7 @@ struct Rectangle {
     x1: f64,
     y1: f64,
     transform: InversableTransform,
-    material: Arc<Box<dyn Material>>,
+    material: MaterialPtr,
 }
 
 impl Rectangle {
@@ -164,7 +164,7 @@ impl Rectangle {
         x1: f64,
         y1: f64,
         transform: InversableTransform,
-        material: Arc<Box<dyn Material>>,
+        material: MaterialPtr,
     ) -> Self {
         Self {
             x0,
@@ -227,14 +227,14 @@ pub struct Cube {
     max_p: Vector3d,
     name: String,
     transform: InversableTransform,
-    material: Arc<Box<dyn Material>>,
+    material: MaterialPtr,
 }
 
 impl Cube {
     pub fn new(
         name: String,
         transform: InversableTransform,
-        material: Arc<Box<dyn Material>>,
+        material: MaterialPtr,
     ) -> Self {
         Self {
             min_p: Vector3d::new(-1.0, -1.0, -1.0),
@@ -306,7 +306,7 @@ impl Shape for Cube {
 pub struct Sphere {
     name: String,
     transform: InversableTransform,
-    material: Arc<Box<dyn Material>>,
+    material: MaterialPtr,
     inverse_normal: bool,
 }
 
@@ -314,7 +314,7 @@ impl Sphere {
     pub fn new(
         name: String,
         transform: InversableTransform,
-        material: Arc<Box<dyn Material>>,
+        material: MaterialPtr,
         inverse_normal: bool,
     ) -> Self {
         Self {
@@ -405,7 +405,7 @@ struct Torus {
     radius: f64,
     tube_radius: f64,
     transform: InversableTransform,
-    material: Arc<Box<dyn Material>>,
+    material: MaterialPtr,
 }
 
 impl Torus {
@@ -414,7 +414,7 @@ impl Torus {
         radius: f64,
         tube_radius: f64,
         transform: InversableTransform,
-        material: Arc<Box<dyn Material>>,
+        material: MaterialPtr,
     ) -> Self {
         Self {
             name,
@@ -729,10 +729,10 @@ impl BvhNode {
 }
 
 mod json_models {
-    use super::{super::json_models::ShapeJson, material::Material};
-    use crate::algebra::transform::InversableTransform;
+    use super::{super::json_models::ShapeJson};
+    use crate::{algebra::transform::InversableTransform, world::material::MaterialPtr};
     use serde::{Deserialize, Serialize};
-    use std::{collections::HashMap, fmt::Debug, sync::Arc};
+    use std::{collections::HashMap, fmt::Debug};
 
     fn default_false() -> bool {
         false
@@ -752,7 +752,7 @@ mod json_models {
     impl ShapeJson for Sphere {
         fn make_shape(
             &self,
-            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+            materials: &HashMap<String, MaterialPtr>,
         ) -> Box<dyn super::Shape> {
             Box::new(super::Sphere::new(
                 self.name.clone(),
@@ -776,7 +776,7 @@ mod json_models {
     impl ShapeJson for Torus {
         fn make_shape(
             &self,
-            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+            materials: &HashMap<String, MaterialPtr>,
         ) -> Box<dyn super::Shape> {
             Box::new(super::Torus::new(
                 self.name.clone(),
@@ -802,7 +802,7 @@ mod json_models {
     impl ShapeJson for Rectangle {
         fn make_shape(
             &self,
-            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+            materials: &HashMap<String, MaterialPtr>,
         ) -> Box<dyn super::Shape> {
             Box::new(super::Rectangle::new(
                 self.x0,
@@ -826,7 +826,7 @@ mod json_models {
     impl ShapeJson for Cube {
         fn make_shape(
             &self,
-            materials: &HashMap<String, Arc<Box<dyn Material>>>,
+            materials: &HashMap<String, MaterialPtr>,
         ) -> Box<dyn super::Shape> {
             Box::new(super::Cube::new(
                 self.name.clone(),

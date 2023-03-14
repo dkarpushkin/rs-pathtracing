@@ -17,7 +17,6 @@ use ray_tracing::{
 };
 
 const SIZE: (i32, i32) = (1600, 900);
-// const SIZE: (u32, u32) = (800, 450);
 
 fn main() {
     let args = env::args().collect::<Vec<String>>();
@@ -153,7 +152,8 @@ impl RendererState {
     ) -> Self {
         let json_file =
             fs::read_to_string(world_file).expect("Something went wrong reading the file");
-        let mut scene = Scene::from_json(&json_file)
+
+        let scene = Scene::from_json(&json_file)
             .or_else(|err| {
                 error!("Loading world failed: {}", err);
                 Err(err)
@@ -207,7 +207,7 @@ impl RendererState {
     }
 
     fn render(&mut self, frame: &mut [u8]) {
-        let samples = if self.is_high_sampling {
+        let samples_number = if self.is_high_sampling {
             self.samples_high
         } else {
             1
@@ -217,8 +217,11 @@ impl RendererState {
             self.is_redraw = false;
             self.is_finished = false;
             self.renderer.stop_rendering();
-            self.renderer
-                .start_rendering(self.shared_camera.clone(), &self.img_params, samples);
+            self.renderer.start_rendering(
+                self.shared_camera.clone(),
+                &self.img_params,
+                samples_number,
+            );
             self.render_start = Instant::now();
 
             // for v in self.color_buffer.iter_mut() {
