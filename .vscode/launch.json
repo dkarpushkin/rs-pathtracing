@@ -5,13 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "ray_tracing",
+            "name": "main_raylib",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/target/debug/ray_tracing.exe",
-            "args": ["${workspaceFolder}/world.json"],
+            "program": "${workspaceFolder}/target/debug/main_raylib.exe",
+            "args": ["${workspaceFolder}/scenes/spheres.json"],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "console": "externalTerminal",
             "preLaunchTask": "rust: cargo build"
@@ -20,10 +20,10 @@
             "name": "Main",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/target/debug/main_raylib.exe",
+            "program": "${workspaceFolder}/target/debug/main.exe",
             "args": ["${workspaceFolder}/scenes/spheres.json"],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "console": "externalTerminal",
             "preLaunchTask": "rust: cargo build"
