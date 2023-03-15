@@ -15,10 +15,8 @@ use std::{
     thread::{spawn, JoinHandle},
 };
 
-pub mod step_by_step;
-pub mod thread_pool;
-pub mod thread_pool_new;
-pub mod threaded;
+mod step_by_step;
+mod thread_pool_new;
 
 pub fn ray_color(world: &Scene, ray: &Ray, depth: u32) -> Vector3d {
     match world.closest_hit(&ray, 0.001, f64::INFINITY) {
@@ -36,14 +34,18 @@ pub fn ray_color(world: &Scene, ray: &Ray, depth: u32) -> Vector3d {
                         .emitted(ray_hit.u, ray_hit.v, &ray_hit.point)
                 }
             }
-            // 0.5 * (ray_hit.normal.normalize() + Vector3d::new(1.0, 1.0, 1.0))
+            // 0.5 * (ray_hit.normal().normalize() + Vector3d::new(1.0, 1.0, 1.0))
         }
         None => {
-            // let t = 0.5 * (ray.direction.y + 1.0);
-            // (1.0 - t) * Vector3d::new(1.0, 1.0, 1.0) + t * Vector3d::new(0.5, 0.7, 1.0)
-            world.background()
+            world.background(&ray)
         }
     }
+}
+
+#[derive(Clone, Copy)]
+pub enum RenderMode {
+    Static,
+    StepByStep,
 }
 
 pub trait Renderer {
@@ -55,6 +57,21 @@ pub trait Renderer {
     );
     fn render_step(&mut self, buffer: &mut Vec<Vector3d>) -> bool;
     fn stop_rendering(&mut self);
+}
+
+pub fn new_renderer(render_mode: RenderMode, shared_scene: Arc<RwLock<Scene>>) -> Box<dyn Renderer> {
+    match render_mode {
+        RenderMode::Static => Box::new(thread_pool_new::ThreadPoolRenderer::new(
+            shared_scene.clone(),
+            12,
+            50,
+        )),
+        RenderMode::StepByStep => Box::new(step_by_step::ThreadPoolRenderer::new(
+            shared_scene.clone(),
+            12,
+            50,
+        )),
+    }
 }
 
 type InputData = (u32, Vec<Ray>);

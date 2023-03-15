@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use super::{
-    material::{self, Material, MaterialPtr},
+    material::{Material, MaterialPtr},
     Ray, RayHit,
 };
 use crate::algebra::{
@@ -146,6 +146,8 @@ pub trait Shape: Debug + Send + Sync {
 
     fn as_any(&self) -> &dyn Any;
 }
+
+pub type ShapePtr = Arc<Box<dyn Shape>>;
 
 #[derive(Debug)]
 struct Rectangle {
@@ -619,8 +621,8 @@ impl ShapeCollection {
 
 #[derive(Debug)]
 pub struct BvhNode {
-    left: Box<dyn Shape>,
-    right: Option<Box<dyn Shape>>,
+    left: ShapePtr,
+    right: Option<ShapePtr>,
     bounding_box: AABB,
 }
 
@@ -660,55 +662,58 @@ impl Shape for BvhNode {
 }
 
 impl BvhNode {
-    pub fn new(mut shapes: Vec<Box<dyn Shape>>) -> Self {
+    pub fn new(shapes: &[ShapePtr]) -> Self {
         let mut rng = rand::thread_rng();
         let axis = rng.gen_range(0..2);
 
-        if axis == 0 {
-            shapes.sort_by(|a, b| {
-                let a_bb = a.get_bounding_box();
-                let b_bb = b.get_bounding_box();
+        // if axis == 0 {
+        //     shapes.sort_by(|a, b| {
+        //         let a_bb = a.get_bounding_box();
+        //         let b_bb = b.get_bounding_box();
 
-                if a_bb.min_p.x < b_bb.min_p.x {
-                    std::cmp::Ordering::Less
-                } else {
-                    std::cmp::Ordering::Greater
-                }
-            });
-        } else if axis == 1 {
-            shapes.sort_by(|a, b| {
-                let a_bb = a.get_bounding_box();
-                let b_bb = b.get_bounding_box();
+        //         if a_bb.min_p.x < b_bb.min_p.x {
+        //             std::cmp::Ordering::Less
+        //         } else {
+        //             std::cmp::Ordering::Greater
+        //         }
+        //     });
+        // } else if axis == 1 {
+        //     shapes.sort_by(|a, b| {
+        //         let a_bb = a.get_bounding_box();
+        //         let b_bb = b.get_bounding_box();
 
-                if a_bb.min_p.y < b_bb.min_p.y {
-                    std::cmp::Ordering::Less
-                } else {
-                    std::cmp::Ordering::Greater
-                }
-            });
-        } else {
-            shapes.sort_by(|a, b| {
-                let a_bb = a.get_bounding_box();
-                let b_bb = b.get_bounding_box();
+        //         if a_bb.min_p.y < b_bb.min_p.y {
+        //             std::cmp::Ordering::Less
+        //         } else {
+        //             std::cmp::Ordering::Greater
+        //         }
+        //     });
+        // } else {
+        //     shapes.sort_by(|a, b| {
+        //         let a_bb = a.get_bounding_box();
+        //         let b_bb = b.get_bounding_box();
 
-                if a_bb.min_p.z < b_bb.min_p.z {
-                    std::cmp::Ordering::Less
-                } else {
-                    std::cmp::Ordering::Greater
-                }
-            });
-        }
+        //         if a_bb.min_p.z < b_bb.min_p.z {
+        //             std::cmp::Ordering::Less
+        //         } else {
+        //             std::cmp::Ordering::Greater
+        //         }
+        //     });
+        // }
 
         let n = shapes.len();
         let (left, right) = if n == 1 {
-            let s = shapes.swap_remove(0);
+            // Only one non-BVH shape
+            let s = Arc::clone(&shapes[0]);
             (s, None)
         } else if n == 2 {
-            (shapes.swap_remove(0), Some(shapes.swap_remove(0)))
+            // Both are non-BVH shapes
+            (Arc::clone(&shapes[0]), Some(Arc::clone(&shapes[1])))
         } else {
+            // both are BvhNode
             (
-                Box::new(BvhNode::new(shapes.drain(..n / 2).collect())) as Box<dyn Shape>,
-                Some(Box::new(BvhNode::new(shapes)) as Box<dyn Shape>),
+                Arc::new(Box::new(BvhNode::new(&shapes[(..n / 2)])) as Box<dyn Shape>),
+                Some(Arc::new(Box::new(BvhNode::new(&shapes[(n / 2..)])) as Box<dyn Shape>)),
             )
         };
 
@@ -721,7 +726,7 @@ impl BvhNode {
         };
 
         Self {
-            left,
+            left: Arc::clone(&left),
             right,
             bounding_box: aabb,
         }

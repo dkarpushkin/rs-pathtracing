@@ -12,7 +12,7 @@ use ray_tracing::{
         ray_caster::{ImageParams, MultisamplerRayCaster},
         Camera, CameraOrbitControl,
     },
-    renderer::{step_by_step, thread_pool_new, Renderer},
+    renderer::{Renderer, new_renderer, RenderMode},
     world::Scene,
 };
 use winit::{
@@ -184,11 +184,6 @@ fn main() -> Result<(), Error> {
     });
 }
 
-enum RenderMode {
-    Static,
-    StepByStep,
-}
-
 struct RendererState {
     is_redraw: bool,
     is_finished: bool,
@@ -226,18 +221,7 @@ impl RendererState {
         let color_buffer = vec![Vector3d::new(0.0, 0.0, 0.0); (SIZE.0 * SIZE.1) as usize];
         let shared_camera = Arc::new(RwLock::new(scene.camera().clone()));
         let shared_scene = Arc::new(RwLock::new(scene));
-        let renderer: Box<dyn Renderer> = match render_mode {
-            RenderMode::Static => Box::new(thread_pool_new::ThreadPoolRenderer::new(
-                shared_scene.clone(),
-                12,
-                50,
-            )),
-            RenderMode::StepByStep => Box::new(step_by_step::ThreadPoolRenderer::new(
-                shared_scene.clone(),
-                12,
-                50,
-            )),
-        };
+        let renderer: Box<dyn Renderer> = new_renderer(render_mode, shared_scene.clone());
 
         let camera_control =
             CameraOrbitControl::from_camera(shared_camera.clone(), Vector3d::new(0.0, 0.0, 0.0));
