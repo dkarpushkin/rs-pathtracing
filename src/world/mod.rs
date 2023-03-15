@@ -196,7 +196,8 @@ impl Scene {
     }
 
     /// Get a reference to the scene's background.
-    pub fn background(&self) -> Vector3d {
-        self.background
+    pub fn background(&self, ray: &Ray) -> Vector3d {
+        let t = 0.5 * (ray.direction.y + 1.0);
+        (1.0 - t) * Vector3d::new(1.0, 1.0, 1.0) + t * Vector3d::new(0.5, 0.7, 1.0)
     }
 }
