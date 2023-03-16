@@ -16,7 +16,9 @@ use std::{
 };
 
 mod step_by_step;
-mod thread_pool_new;
+mod thread_pool;
+mod rayon_thread_pool;
+mod old;
 
 pub fn ray_color(world: &Scene, ray: &Ray, depth: u32) -> Vector3d {
     match world.closest_hit(&ray, 0.001, f64::INFINITY) {
@@ -46,6 +48,8 @@ pub fn ray_color(world: &Scene, ray: &Ray, depth: u32) -> Vector3d {
 pub enum RenderMode {
     Static,
     StepByStep,
+    Rayon,
+    Threaded,
 }
 
 pub trait Renderer {
@@ -61,7 +65,7 @@ pub trait Renderer {
 
 pub fn new_renderer(render_mode: RenderMode, shared_scene: Arc<RwLock<Scene>>) -> Box<dyn Renderer> {
     match render_mode {
-        RenderMode::Static => Box::new(thread_pool_new::ThreadPoolRenderer::new(
+        RenderMode::Static => Box::new(thread_pool::ThreadPoolRenderer::new(
             shared_scene.clone(),
             12,
             50,
@@ -71,6 +75,18 @@ pub fn new_renderer(render_mode: RenderMode, shared_scene: Arc<RwLock<Scene>>) -
             12,
             50,
         )),
+        RenderMode::Rayon => Box::new(rayon_thread_pool::ThreadPoolRenderer::new(
+            shared_scene.clone(),
+            12,
+            50,
+        )),
+        RenderMode::Threaded => Box::new(old::threaded::ThreadPoolRenderer::new(
+            shared_scene.clone(),
+            12,
+            50,
+        )
+
+        ),
     }
 }
 
@@ -129,7 +145,7 @@ fn new_worker_thread(
             };
             match input {
                 Some(v) => {
-                    let result = trace_pixel_samples_group(v, world, depth);
+                    let result = trace_pixel_samples_group(&v, world, depth);
                     output_sender.lock().unwrap().send(Some(result)).unwrap();
                 }
                 None => {
@@ -143,7 +159,7 @@ fn new_worker_thread(
     })
 }
 
-pub fn trace_pixel_samples_group(input: InputDataVec, world: &Scene, depth: u32) -> OutputDataVec {
+pub fn trace_pixel_samples_group(input: &InputDataVec, world: &Scene, depth: u32) -> OutputDataVec {
     // let mut result = Vec::with_capacity(input.len());
     // for (index, rays) in input {
     //     let ln = rays.len() as f64;
@@ -160,9 +176,9 @@ pub fn trace_pixel_samples_group(input: InputDataVec, world: &Scene, depth: u32)
         .iter()
         .map(|input_data| {
             trace_pixel_samples(input_data, world, depth)
-            // let samples_colors = rays.iter().map(|ray| ray_color(world, ray, depth));
+            // let samples_colors = input_data.1.iter().map(|ray| ray_color(world, ray, depth));
             // let ln = samples_colors.len() as f64;
-            // (*index, samples_colors.sum::<Vector3d>() / ln)
+            // (input_data.0, samples_colors.sum::<Vector3d>() / ln)
         })
         .collect_vec()
 }

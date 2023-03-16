@@ -11,7 +11,7 @@ use crate::camera::{Camera, ray_caster::MultisamplerRayCaster};
 use crate::world::{ray::Ray, Scene};
 use itertools::Itertools;
 
-use super::ray_color;
+use super::super::ray_color;
 
 type InputData = (u32, u32, Vec<Ray>);
 type InputDataVec = Vec<InputData>;

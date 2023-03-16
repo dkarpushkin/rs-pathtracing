@@ -30,11 +30,6 @@
         {
             "name": "GlassSphere",
             "type": "Sphere",
-            
-            "shape": {
-                "type": "Heart"
-            },
-            "step": 0.01,
 
             "transform": {
                 "translate": [
@@ -59,11 +54,6 @@
             "name": "GlassSphereInside",
             "type": "Sphere",
             
-            "shape": {
-                "type": "Heart"
-            },
-            "step": 0.01,
-
             "transform": {
                 "translate": [
                     0.0,
@@ -85,7 +75,7 @@
             "inverse_normal": true
         },
         {
-            "name": "Sphere2",
+            "name": "Heart1",
             "type": "BruteForsableShape",
             "shape": {
                 "type": "Heart"
@@ -111,7 +101,7 @@
             "material": "Sphere2"
         },
         {
-            "name": "Sphere3",
+            "name": "Heart2",
             "type": "BruteForsableShape",
             "shape": {
                 "type": "Heart"

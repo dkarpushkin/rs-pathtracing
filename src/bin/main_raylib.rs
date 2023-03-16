@@ -12,7 +12,7 @@ use ray_tracing::{
         ray_caster::{ImageParams, MultisamplerRayCaster},
         Camera, CameraOrbitControl,
     },
-    renderer::{Renderer, RenderMode, new_renderer},
+    renderer::{new_renderer, RenderMode, Renderer},
     world::Scene,
 };
 
@@ -47,13 +47,11 @@ fn main() {
 
     let mut state = RendererState::new(
         &world_file,
-        RenderMode::StepByStep,
+        RenderMode::Rayon,
         samples,
         width as u32,
         height as u32,
     );
-
-    let mut frame = vec![0; (width * height * 4) as usize];
 
     let img = Image::gen_image_cellular(width, height, 100);
     let mut txt = rl
@@ -66,7 +64,7 @@ fn main() {
             // println!("images/rendered_{}.png", t);
             image::save_buffer(
                 format!("images/rendered.png"),
-                &frame,
+                &state.frame,
                 width as u32,
                 height as u32,
                 image::ColorType::Rgba8,
@@ -96,8 +94,8 @@ fn main() {
 
         state.process_input(&rl);
 
-        state.render(&mut frame);
-        txt.update_texture(&frame);
+        state.render();
+        txt.update_texture(&state.frame);
 
         {
             let mut d = rl.begin_drawing(&thread);
@@ -134,6 +132,8 @@ struct RendererState {
 
     render_start: Instant,
     render_duration: Duration,
+
+    frame: Vec<u8>,
 }
 
 impl RendererState {
@@ -153,13 +153,15 @@ impl RendererState {
                 Err(err)
             })
             .unwrap();
-        // scene.generate_cubes(20);
-        // scene.add_random_spheres();
 
         let color_buffer = vec![Vector3d::new(0.0, 0.0, 0.0); (width * height) as usize];
         let shared_camera = Arc::new(RwLock::new(scene.camera().clone()));
         let shared_scene = Arc::new(RwLock::new(scene));
         let renderer: Box<dyn Renderer> = new_renderer(render_mode, shared_scene.clone());
+        // let renderer = Box::new(rayon_thread_pool::ThreadPoolRenderer::new(
+        //     shared_scene.clone(),
+        //     50,
+        // ));
 
         let camera_control = CameraOrbitControl::from_camera(
             shared_camera.clone(),
@@ -186,10 +188,12 @@ impl RendererState {
 
             render_start: Instant::now(),
             render_duration: Duration::seconds(0),
+
+            frame: vec![0; (width * height * 4) as usize],
         }
     }
 
-    fn render(&mut self, frame: &mut [u8]) {
+    fn render(&mut self) {
         let samples_number = if self.is_high_sampling {
             self.samples_high
         } else {
@@ -219,7 +223,7 @@ impl RendererState {
                 self.render_duration = Instant::now() - self.render_start;
             }
 
-            for (dest, src) in frame.chunks_mut(4).zip(&self.color_buffer) {
+            for (dest, src) in self.frame.chunks_mut(4).zip(&self.color_buffer) {
                 let r = src.x.sqrt();
                 let g = src.y.sqrt();
                 let b = src.z.sqrt();
