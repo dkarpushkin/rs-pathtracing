@@ -84,9 +84,9 @@ impl Renderer for ThreadPoolRenderer {
         let world = &*self.world.read().unwrap();
         rays_vec.par_bridge().for_each(|(buffer_chunk, ray_chunk)| {
 
-            let b = trace_pixel_samples_group(&ray_chunk, world, self.depth);
+            let result = trace_pixel_samples_group(&ray_chunk, world, self.depth);
 
-            for (x, v) in b.iter().zip(buffer_chunk) {
+            for (x, v) in result.iter().zip(buffer_chunk) {
                 *v = x.1;
             }
 

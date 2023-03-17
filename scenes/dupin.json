@@ -1,8 +1,13 @@
 {
+    "background": [
+        0.1,
+        0.1,
+        0.1
+    ],
     "shapes": [
         {
+            "name": "DupinCyclide",
             "type": "BruteForsableShape",
-            "step": 0.01,
             "shape": {
                 "type": "DupinCyclide",
                 "a": 1.11,
@@ -11,146 +16,166 @@
                 "d": 0.1,
                 "sphere_radius": 2.5
             },
+            "step": 0.01,
             "transform": {
-                "translate": {
-                    "x": 0.0,
-                    "y": 5.0,
-                    "z": 0.0
-                },
-                "rotate": {
-                    "x": 0.0,
-                    "y": -100.0,
-                    "z": 0.0
-                },
-                "scale": {
-                    "x": 2.0,
-                    "y": 2.0,
-                    "z": 2.0
-                }
+                "translate": [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
             },
-            "material": {
-                "type": "Metal",
-                "material": {
-                    "albedo": {
-                        "type": "SolidColor",
-                        "color": {
-                            "x": 1.0,
-                            "y": 0.5,
-                            "z": 0.5
-                        },
-                        "scale": 5.0,
-                        "odd": {
-                            "type": "SolidColor",
-                            "color": {
-                                "x": 0.1,
-                                "y": 0.1,
-                                "z": 0.9
-                            }
-                        },
-                        "even": {
-                            "type": "SolidColor",
-                            "color": {
-                                "x": 0.9,
-                                "y": 0.1,
-                                "z": 0.1
-                            }
-                        },
-                        "multipliers": {
-                            "x": 30.0,
-                            "y": 30.0,
-                            "z": 30.0
-                        }
-                    },
-                    "fuzz": 0.3,
-                    "index_of_refraction": 1.5
-                }
-            }
+            "material": "Glass1"
         },
         {
-            "type": "TransformedSphere",
+            "type": "Sphere",
+            "name": "Ground",
             "transform": {
-                "translate": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "rotate": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "scale": {
-                    "x": 10.0,
-                    "y": 0.1,
-                    "z": 10.0
-                }
+                "translate": [
+                    0.0,
+                    -1000.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000,
+                    1000,
+                    1000
+                ]
             },
-            "material": {
-                "type": "Metal",
-                "material": {
-                    "albedo": {
-                        "type": "SolidColor",
-                        "color": {
-                            "x": 0.9,
-                            "y": 0.9,
-                            "z": 0.9
-                        }
-                    },
-                    "fuzz": 0.1,
-                    "index_of_refraction": 1.5
-                }
-            }
-        },
-        {
-            "type": "TransformedSphere",
-            "transform": {
-                "translate": {
-                    "x": 0.0,
-                    "y": -100.5,
-                    "z": 0.0
-                },
-                "rotate": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "scale": {
-                    "x": 100,
-                    "y": 100,
-                    "z": 100
-                }
-            },
-            "material": {
-                "type": "Lambertian",
-                "material": {
-                    "albedo": {
-                        "type": "SolidColor",
-                        "color": {
-                            "x": 0.0,
-                            "y": 1.0,
-                            "z": 0.0
-                        },
-                        "odd": {
-                            "type": "SolidColor",
-                            "color": {
-                                "x": 0.1,
-                                "y": 0.2,
-                                "z": 0.8
-                            }
-                        },
-                        "even": {
-                            "type": "SolidColor",
-                            "color": {
-                                "x": 0.9,
-                                "y": 0.2,
-                                "z": 0.1
-                            }
-                        }
-                    },
-                    "fuzz": 0.0,
-                    "index_of_refraction": 1.5
-                }
-            }
+            "material": "Ground"
         }
-    ]
+    ],
+    "camera": {
+        "position": [
+            -0.6,
+            7,
+            -69
+        ],
+        "direction": [
+            0.6,
+            -7,
+            69
+        ],
+        "up": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "fov": 20.0,
+        "focal_length": 1.0
+    },
+    "materials": {
+        "Ground": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            }
+        },
+        "Glass": {
+            "type": "Dielectric",
+            "index_of_refraction": 1.5
+        },
+        "Glass1": {
+            "type": "Dielectric",
+            "index_of_refraction": 0.5
+        },
+        "Sphere2": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.4,
+                    0.2,
+                    0.1
+                ]
+            }
+        },
+        "Sphere3": {
+            "type": "Metal",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.7,
+                    0.6,
+                    0.5
+                ]
+            },
+            "fuzz": 0
+        },
+        "Green": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.12,
+                    0.45,
+                    0.15
+                ]
+            }
+        },
+        "Red": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.65,
+                    0.05,
+                    0.05
+                ]
+            }
+        },
+        "White": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.73,
+                    0.73,
+                    0.73
+                ]
+            }
+        },
+        "Light": {
+            "type": "DiffuseLight",
+            "emit": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 15,
+                    "y": 15,
+                    "z": 15
+                }
+            }
+        },
+        "Mirror": {
+            "type": "Metal",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.73,
+                    0.73,
+                    0.73
+                ]
+            },
+            "fuzz": 0.01
+        }
+    }
 }

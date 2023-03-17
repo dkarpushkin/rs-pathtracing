@@ -1,0 +1,178 @@
+{
+    "background": [
+        0.1,
+        0.1,
+        0.1
+    ],
+    "shapes": [
+        {
+            "name": "Sine",
+            "type": "BruteForsableShape",
+            "shape": {
+                "type": "Star",
+                "a": 30.0,
+                "sphere_radius": 1.0
+            },
+            "step": 0.01,
+            "transform": {
+                "translate": [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "material": "Glass"
+        },
+        {
+            "type": "Sphere",
+            "name": "Ground",
+            "transform": {
+                "translate": [
+                    0.0,
+                    -1000.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000,
+                    1000,
+                    1000
+                ]
+            },
+            "material": "Ground"
+        }
+    ],
+    "camera": {
+        "position": [
+            -0.6,
+            7,
+            -69
+        ],
+        "direction": [
+            0.6,
+            -7,
+            69
+        ],
+        "up": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "fov": 20.0,
+        "focal_length": 1.0
+    },
+    "materials": {
+        "Ground": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            }
+        },
+        "Glass": {
+            "type": "Dielectric",
+            "index_of_refraction": 1.5
+        },
+        "Glass1": {
+            "type": "Dielectric",
+            "index_of_refraction": 0.5
+        },
+        "Sphere2": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.4,
+                    0.2,
+                    0.1
+                ]
+            }
+        },
+        "Sphere3": {
+            "type": "Metal",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.7,
+                    0.6,
+                    0.5
+                ]
+            },
+            "fuzz": 0
+        },
+        "Green": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.12,
+                    0.45,
+                    0.15
+                ]
+            }
+        },
+        "Red": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.65,
+                    0.05,
+                    0.05
+                ]
+            }
+        },
+        "White": {
+            "type": "Lambertian",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.73,
+                    0.73,
+                    0.73
+                ]
+            }
+        },
+        "Light": {
+            "type": "DiffuseLight",
+            "emit": {
+                "type": "SolidColor",
+                "color": {
+                    "x": 15,
+                    "y": 15,
+                    "z": 15
+                }
+            }
+        },
+        "Mirror": {
+            "type": "Metal",
+            "albedo": {
+                "type": "SolidColor",
+                "color": [
+                    0.73,
+                    0.73,
+                    0.73
+                ]
+            },
+            "fuzz": 0.01
+        }
+    }
+}

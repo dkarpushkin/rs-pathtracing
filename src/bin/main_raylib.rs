@@ -47,7 +47,7 @@ fn main() {
 
     let mut state = RendererState::new(
         &world_file,
-        RenderMode::Rayon,
+        RenderMode::StepByStep,
         samples,
         width as u32,
         height as u32,
